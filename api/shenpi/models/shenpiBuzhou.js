@@ -1,12 +1,14 @@
+/* eslint-disable max-len */
 /* eslint-disable new-cap */
-const U = require('../lib/utils');
-const { deleteUploadFile, saveUploadFile, formatDbField, baseAttr, baseField, baseExtAttr } = require('./base');
-const Sequelize = U.rest.Sequelize;
+import _ from 'lodash';
+import Sequelize from 'sequelize';
+
+const { deleteUploadFile, saveUploadFile, formatDbField, baseAttr, baseField, baseExtAttr } = require('../../models/base');
 
 module.exports = sequelize => {
-  const laowuFenbaoShenpiMingxi = U._.extend(
+  const shenpiBuzhou = _.extend(
     sequelize.define(
-      'laowuFenbaoShenpiMingxi',
+      'shenpiBuzhou',
       Object.assign({}, baseField, {
         initToUserIds: {
           type: Sequelize.type('string', 2000),
@@ -137,5 +139,5 @@ module.exports = sequelize => {
     })
   );
 
-  return laowuFenbaoShenpiMingxi;
+  return shenpiBuzhou;
 };

@@ -1,12 +1,14 @@
+/* eslint-disable max-len */
 /* eslint-disable new-cap */
-const U = require('../lib/utils');
-const { deleteUploadFile, saveUploadFile, formatDbField, baseAttr, baseField, baseExtAttr } = require('./base');
-const Sequelize = U.rest.Sequelize;
+import _ from 'lodash';
+import Sequelize from 'sequelize';
+
+const { deleteUploadFile, saveUploadFile, formatDbField, baseAttr, baseField, baseExtAttr } = require('../../models/base');
 
 module.exports = sequelize => {
-  const laowuFenbaoShenpi = U._.extend(
+  const shenpi = _.extend(
     sequelize.define(
-      'laowuFenbaoShenpi',
+      'shenpi',
       Object.assign({}, baseField, {
         allUserIds: {
           type: Sequelize.type('string', 1000),
@@ -30,17 +32,17 @@ module.exports = sequelize => {
           },
         },
         /*        toUserIds: {*/
-        //type: Sequelize.type('string', 1000),
-        //allowNull: false,
-        //defaultValue: '',
-        //comment: '下一步的接受人',
-        //},
-        //toUserNames: {
-        //type: Sequelize.type('string', 2000),
-        //allowNull: false,
-        //defaultValue: '',
-        //comment: '下一步接受人姓名',
-        /*},*/
+        // type: Sequelize.type('string', 1000),
+        // allowNull: false,
+        // defaultValue: '',
+        // comment: '下一步的接受人',
+        // },
+        // toUserNames: {
+        // type: Sequelize.type('string', 2000),
+        // allowNull: false,
+        // defaultValue: '',
+        // comment: '下一步接受人姓名',
+        /* },*/
         title: {
           type: Sequelize.type('string', 600),
           allowNull: false,
@@ -121,7 +123,7 @@ module.exports = sequelize => {
         defaultDirection: 'desc',
       },
       includes: {
-        neirong: ['laowuFenbaoShenpiNeirong', true],
+        neirong: ['shenpiNeirong', true],
         tagsData: ['tagsData', false],
         innerTagsData: ['tagsData', true], // inner
       },
@@ -130,5 +132,5 @@ module.exports = sequelize => {
     })
   );
 
-  return laowuFenbaoShenpi;
+  return shenpi;
 };

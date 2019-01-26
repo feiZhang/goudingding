@@ -1,13 +1,9 @@
-const U = require('../../lib/utils');
-const modules = U.getModules(__dirname, 'js', ['index', 'defaults']);
-const helper = Object.assign({}, U.rest.helper, modules);
-
-module.exports = function({ mainModel }) {
+module.exports = function ({ mainModel, helper, U }) {
   const list = [
     // helper.checker.sysAdmin(),
     helper.rest.list(mainModel, '', null, 'list_data'),
-    (req, res, next) => {
-      res.send({ data: req.hooks['list_data'], count: res.header('X-Content-Record-Total') || 0 });
+    (req, res) => {
+      res.send({ data: req.hooks.list_data, count: res.header('X-Content-Record-Total') || 0 });
     },
   ];
 
