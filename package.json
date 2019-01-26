@@ -1,0 +1,27 @@
+{
+  "name": "goudingding",
+  "version": "0.0.1",
+  "description": "个人的私有组件库",
+  "main": "index.js",
+  "scripts": {
+    "_test": "mocha",
+    "test": "npm run eslint && nyc --reporter=lcov --reporter=text-summary npm run _test",
+    "eslint": "eslint {./index.js,./lib,./test} && echo '\u001b[32m\u001b[1mEslint validate success.\u001b[22m\u001b[39m'"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:feiZhang/goudingding.git"
+  },
+  "keywords": [
+  ],
+  "author": "liangpeng.net",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/feiZhang/goudingding/issues"
+  },
+  "homepage": "https://github.com/feiZhang/goudingding#readme",
+  "dependencies": {
+  },
+  "devDependencies": {
+  }
+}
