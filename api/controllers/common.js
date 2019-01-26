@@ -1,4 +1,4 @@
-module.exports = function ({ mainModel, helper, U }) {
+module.exports = ({ mainModel, helper, U }) => {
   const list = [
     // helper.checker.sysAdmin(),
     helper.rest.list(mainModel, '', null, 'list_data'),

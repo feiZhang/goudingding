@@ -8,7 +8,7 @@ import { exec } from 'child_process';
 
 const Op = Sequelize.Op;
 
-export default ({ models, service, upload }) => ({
+export default ({ U: { models }, config: { service, upload } }) => ({
   baseAttr: {
     omitNull: false,
     timestamps: true,

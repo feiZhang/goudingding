@@ -5,14 +5,14 @@ import shenpiMingxi from './models/shenpiMingxi.js';
 import shenpiNeirong from './models/shenpiNeirong.js';
 import shenpiController from './controllers/shenpi';
 
-export default {
+export default ({ baseModel }) => ({
   models: {
-    shenpi,
-    shenpiBuzhou,
-    shenpiMingxi,
-    shenpiNeirong,
+    shenpi: shenpi({ baseModel }),
+    shenpiBuzhou: shenpiBuzhou({ baseModel }),
+    shenpiMingxi: shenpiMingxi({ baseModel }),
+    shenpiNeirong: shenpiNeirong({ baseModel }),
   },
   controllers: {
     shenpi: shenpiController,
   },
-};
+});

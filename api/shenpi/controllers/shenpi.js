@@ -4,7 +4,7 @@ import _ from 'lodash';
 import moment from 'moment';
 
 const Op = Sequelize.Op;
-export default ({ rest, mShenpi, mShenpiMingxi, mShenpiUser, mShenpiNeirong, mTags, error, shenpiConfig, models, smsService }) => {
+export default ({ mShenpi, mShenpiMingxi, mShenpiBuzhou, mShenpiNeirong, shenpiConfig, U: { rest, error, models, sms } }) => {
   const getAllUserIds = ({ curV, oldV, newV }) => {
     _.pullAll(curV, _.difference(oldV, newV));
     return _.union(curV, newV);
@@ -34,7 +34,7 @@ export default ({ rest, mShenpi, mShenpiMingxi, mShenpiUser, mShenpiNeirong, mTa
       req.params.includes += ',tagsData';
       req.params.tagsData = { creatorId: req.user.id };
       if (req.params.tagsIds) {
-        const tagsIds = await mTags.findAll({
+        const tagsIds = await models('tagsData').findAll({
           where: { tagsId: { $in: req.params.tagsIds.split(',') } },
         });
         const ids = tagsIds.map(tt => tt.dataId);
@@ -84,11 +84,11 @@ export default ({ rest, mShenpi, mShenpiMingxi, mShenpiUser, mShenpiNeirong, mTa
         const mainData = await mShenpi.findById(req.params.shenpiId);
         switch (req.params.doAction) {
         case 'jujue': {
-          await mShenpiUser.update(
+          await mShenpiBuzhou.update(
             { banliyijian: req.params.banliyijian },
             { where: { index: req.params.index, shenpiId: req.params.shenpiId, userId: req.user.id, roleId: req.params.roleId } }
           );
-          await mShenpiUser.update({ isDelete: 0, color: 'red' }, { silent: true, where: { shenpiId: req.params.shenpiId } });
+          await mShenpiBuzhou.update({ isDelete: 0, color: 'red' }, { silent: true, where: { shenpiId: req.params.shenpiId } });
           await replyModel.update(
             { zhuangtai: '经办', toUserIds: replyModel.sequelize.literal('initToUserIds') },
             { where: { shenpiId: req.params.shenpiId } }
@@ -110,7 +110,7 @@ export default ({ rest, mShenpi, mShenpiMingxi, mShenpiUser, mShenpiNeirong, mTa
         }
         case 'tongyi': {
           const currentStep = await replyModel.findById(req.params.id);
-          currentStep.toUserNames = await mShenpiUser.findAll({ where: { shenpiId: req.params.shenpiId, index: currentStep.index, isDelete: 0 } });
+          currentStep.toUserNames = await mShenpiBuzhou.findAll({ where: { shenpiId: req.params.shenpiId, index: currentStep.index, isDelete: 0 } });
           let gotoNext = true;
           currentStep.toUserNames.map(one => {
             if ((one.userId === req.user.id && one.roleId === req.params.roleId) || currentStep.shenpiType === '单批') {
@@ -146,7 +146,7 @@ export default ({ rest, mShenpi, mShenpiMingxi, mShenpiUser, mShenpiNeirong, mTa
                   .filter(one => one !== '')
                   .join(',')},`;
                 xiayige.toUserIds = `,${req.params.nextUserIds.join(',')},`;
-                await mShenpiUser.update({ isDelete: 1 }, { where: { index: xiayige.index, userId: { [Op.notIn]: req.params.nextUserIds } } });
+                await mShenpiBuzhou.update({ isDelete: 1 }, { where: { index: xiayige.index, userId: { [Op.notIn]: req.params.nextUserIds } } });
               }
               // 如果传递了下一步的人员，上面已经格式化过了。
               // 这个字段作废掉
@@ -198,7 +198,7 @@ export default ({ rest, mShenpi, mShenpiMingxi, mShenpiUser, mShenpiNeirong, mTa
                         userName: `[${gdInfo.creatorName}]`,
                         city: `[${gdInfo.cityName}]`,
                       });
-                      smsService
+                      sms
                         .sendSMS({
                           PhoneNumbers: userTels,
                           SignName: '河南铁通',
@@ -391,7 +391,7 @@ export default ({ rest, mShenpi, mShenpiMingxi, mShenpiUser, mShenpiNeirong, mTa
             .bulkCreate(replys)
             .then(() => {
               const toUsers = req.toUserNames.map(rr => ({ ...rr, shenpiId: req.hooks.mShenpi.id }));
-              mShenpiUser.bulkCreate(toUsers);
+              mShenpiBuzhou.bulkCreate(toUsers);
               res.send(req.hooks.mShenpi);
               next();
             });
@@ -415,7 +415,7 @@ export default ({ rest, mShenpi, mShenpiMingxi, mShenpiUser, mShenpiNeirong, mTa
       mShenpiNeirong.findOne({ where: { shenpiId: item.id } })
       .then(lwInfo => {
         mShenpiMingxi.findAll({ where: { shenpiId: item.id }, order: [['id', 'desc']] }).then(results => {
-          mShenpiUser.findAll({ where: { shenpiId: item.id, isDelete: 0 } }).then(toUserNames => {
+          mShenpiBuzhou.findAll({ where: { shenpiId: item.id, isDelete: 0 } }).then(toUserNames => {
             item.historyList = results.map(rr => ({ ...rr.get(), toUserNames: toUserNames.filter(one => one.index === rr.index) }));
             res.send(Object.assign({}, item, lwInfo.get(), { id: item.id }));
             next();
@@ -433,7 +433,7 @@ export default ({ rest, mShenpi, mShenpiMingxi, mShenpiUser, mShenpiNeirong, mTa
     (req, res, next) => {
       mShenpiNeirong.destroy({ where: { shenpiId: req.params.id } });
       mShenpiMingxi.destroy({ where: { shenpiId: req.params.id } });
-      mShenpiUser.destroy({ where: { shenpiId: req.params.id } });
+      mShenpiBuzhou.destroy({ where: { shenpiId: req.params.id } });
       next();
     },
     rest.remove.hook('modelName').exec(),
