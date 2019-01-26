@@ -1,6 +1,7 @@
-import Sequelize from 'sequelize';
+/* eslint-disable new-cap */
+const Sequelize = require('sequelize');
 
-export default ({ baseModel }) => {
+module.exports = ({ baseModel }) => {
   const { formatDbField, baseAttr, baseField, baseExtAttr } = baseModel;
   return {
     fields: Object.assign({}, baseField, {
@@ -20,18 +21,18 @@ export default ({ baseModel }) => {
         defaultValue: 0,
       },
       name: {
-        type: Sequelize.type('string', 300),
+        type: Sequelize.STRING(300),
         allowNull: false,
         defaultValue: '',
       },
       banliyijian: {
-        type: Sequelize.type('string', 3000),
+        type: Sequelize.STRING(3000),
         allowNull: false,
         defaultValue: '',
         comment: '办理意见',
       },
       color: {
-        type: Sequelize.type('string', 300),
+        type: Sequelize.STRING(300),
         allowNull: false,
         defaultValue: '',
       },

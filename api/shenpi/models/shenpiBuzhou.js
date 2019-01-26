@@ -1,13 +1,13 @@
 /* eslint-disable max-len */
 /* eslint-disable new-cap */
-import Sequelize from 'sequelize';
+const Sequelize = require('sequelize');
 
-export default ({ baseModel }) => {
+module.exports = ({ baseModel }) => {
   const { deleteUploadFile, saveUploadFile, formatDbField, baseAttr, baseField, baseExtAttr } = baseModel;
   return {
     fields: Object.assign({}, baseField, {
       initToUserIds: {
-        type: Sequelize.type('string', 2000),
+        type: Sequelize.STRING(2000),
         allowNull: false,
         defaultValue: '',
         comment: '下一步的接受人',
@@ -19,7 +19,7 @@ export default ({ baseModel }) => {
         comment: '接收人',
       },
       toUserIds: {
-        type: Sequelize.type('string', 2000),
+        type: Sequelize.STRING(2000),
         allowNull: false,
         defaultValue: '',
         comment: '下一步的接受人',
@@ -36,7 +36,7 @@ export default ({ baseModel }) => {
       },
       */
       nextToUsers: {
-        type: Sequelize.type('string', 2000),
+        type: Sequelize.STRING(2000),
         allowNull: false,
         defaultValue: '',
         comment: '接收人',
@@ -57,19 +57,19 @@ export default ({ baseModel }) => {
         comment: '工单ID',
       },
       shenpiDept: {
-        type: Sequelize.type('string', 3000),
+        type: Sequelize.STRING(3000),
         allowNull: false,
         defaultValue: '',
         comment: '内容',
       },
       shenpiContent: {
-        type: Sequelize.type('string', 3000),
+        type: Sequelize.STRING(3000),
         allowNull: false,
         defaultValue: '',
         comment: '内容',
       },
       banliyijian: {
-        type: Sequelize.type('string', 3000),
+        type: Sequelize.STRING(3000),
         allowNull: false,
         defaultValue: '',
         comment: '办理意见',
@@ -87,7 +87,7 @@ export default ({ baseModel }) => {
         type: Sequelize.ENUM('单批', '多批'),
         allowNull: false,
         defaultValue: 2,
-        comment: '',
+        comment: '单批',
       },
       autoNext: {
         type: Sequelize.INTEGER.UNSIGNED,

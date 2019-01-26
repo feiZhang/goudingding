@@ -1,9 +1,9 @@
 /* eslint-disable new-cap */
 /* eslint-disable max-len */
-import moment from 'moment';
-import Sequelize from 'sequelize';
+const moment = require('moment');
+const Sequelize = require('sequelize');
 
-export default ({ baseModel }) => {
+module.exports = ({ baseModel }) => {
   const { deleteUploadFile, saveUploadFile, formatDbField, baseAttr, baseField, baseExtAttr } = baseModel;
   return {
     fields: Object.assign({}, baseField, {
@@ -13,16 +13,9 @@ export default ({ baseModel }) => {
         defaultValue: 0,
         comment: 'workFlow的Id',
       },
-      no: {
-        type: Sequelize.type('string', 20),
-        allowNull: false,
-        defaultValue: '',
-        comment: '劳务框架合同编号+流水号',
-      },
       cityId: { type: Sequelize.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0 },
-      cityName: { type: Sequelize.type('string', 200), allowNull: false, defaultValue: '' },
-      telno: { type: Sequelize.type('string', 20), allowNull: false, defaultValue: '' },
-      title: { type: Sequelize.type('string', 200), allowNull: false, defaultValue: '', comment: '当前要处理的人中移建设河南分公司XX项目部工程劳务订单' },
+      cityName: { type: Sequelize.STRING(200), allowNull: false, defaultValue: '' },
+      title: { type: Sequelize.STRING(200), allowNull: false, defaultValue: '', comment: '' },
       riqi: {
         type: Sequelize.DATEONLY,
         allowNull: false,
@@ -34,13 +27,13 @@ export default ({ baseModel }) => {
         },
       },
       beizhu: {
-        type: Sequelize.type('string', 2000),
+        type: Sequelize.STRING(8000),
         allowNull: false,
         defaultValue: '',
         comment: '备注',
       },
       fujian: {
-        type: Sequelize.type('string', 3000),
+        type: Sequelize.TEXT,
         allowNull: false,
         defaultValue: '',
         comment: '附件',

@@ -1,10 +1,16 @@
 /* eslint-disable max-len */
-import Sequelize from 'sequelize';
-import _ from 'lodash';
-import moment from 'moment';
+const _ = require('lodash');
+const moment = require('moment');
 
-const Op = Sequelize.Op;
-export default ({ mShenpi, mShenpiMingxi, mShenpiBuzhou, mShenpiNeirong, shenpiConfig, U: { rest, error, models, sms } }) => {
+module.exports = (config) => {
+  const { name, shenpiConfig, U: { rest, error, model = [], sms } } = config;
+  const { helper } = rest;
+  // console.log(name, model);
+  if (!name) return {};
+  const mShenpi = model(name);
+  const mShenpiMingxi = model(`${name}Mingxi`);
+  const mShenpiBuzhou = model(`${name}Buzhou`);
+  const mShenpiNeirong = model(`${name}Neirong`);
   const getAllUserIds = ({ curV, oldV, newV }) => {
     _.pullAll(curV, _.difference(oldV, newV));
     return _.union(curV, newV);
@@ -14,7 +20,6 @@ export default ({ mShenpi, mShenpiMingxi, mShenpiBuzhou, mShenpiNeirong, shenpiC
   // helper.checker.sysAdmin(),
     async (req, res, next) => {
       req.params.shenpiId = 0;
-      // req.params.includes = "sendToUsers";
       // 代办的
       if (req.params.sendToMy) {
         if (req.params.isHistory) {
@@ -25,8 +30,6 @@ export default ({ mShenpi, mShenpiMingxi, mShenpiBuzhou, mShenpiNeirong, shenpiC
           req.params.currentUserIds_like = `%,${req.user.id},%`;
           req.params.zhuangtai = '办理中';
         }
-        // req.params.includes = "myGonggaos";
-        // req.params.myGonggaos = { userId: req.user.id };
       } else if (!req.user.isAdmin) {
         req.params.creatorId = req.user.id;
       }
@@ -34,7 +37,7 @@ export default ({ mShenpi, mShenpiMingxi, mShenpiBuzhou, mShenpiNeirong, shenpiC
       req.params.includes += ',tagsData';
       req.params.tagsData = { creatorId: req.user.id };
       if (req.params.tagsIds) {
-        const tagsIds = await models('tagsData').findAll({
+        const tagsIds = await model('tagsData').findAll({
           where: { tagsId: { $in: req.params.tagsIds.split(',') } },
         });
         const ids = tagsIds.map(tt => tt.dataId);
@@ -48,15 +51,15 @@ export default ({ mShenpi, mShenpiMingxi, mShenpiBuzhou, mShenpiNeirong, shenpiC
       }
       next();
     },
-    rest.list(mShenpi, '', null, 'list_data'),
+    helper.rest.list(mShenpi, '', null, 'list_data'),
     (req, res, next) => {
       const workIds = req.hooks.list_data.map(tt => tt.id);
-      mShenpiMingxi.findAll({ where: { shenpiId: { $in: workIds } }, order: [['id', 'desc']] }).then(results => {
+      mShenpiBuzhou.findAll({ where: { shenpiId: { $in: workIds } }, order: [['id', 'desc']] }).then(results => {
         res.send({
           data: req.hooks.list_data.map(tt => {
             const ee = tt.get();
             ee.tagsData = ee.tagsData || ee.innerTagsData;
-            ee.replys = results.filter(one => (one.shenpiId === tt.id));
+            ee.buzhous = results.filter(one => (one.shenpiId === tt.id));
             return ee;
           }),
           count: res.header('X-Content-Record-Total') || 0,
@@ -70,9 +73,8 @@ export default ({ mShenpi, mShenpiMingxi, mShenpiBuzhou, mShenpiNeirong, shenpiC
   // fillOtherInfo,
     async (req, res, next) => {
       if (req.params.doType === 'reply') {
-        const replyModel = mShenpiMingxi;
         if (!req.user.isAdmin) {
-          const isMy = await replyModel.findOne({
+          const isMy = await mShenpiBuzhou.findOne({
             where: { id: req.params.id, toUserIds: { $like: `%,${req.user.id},%` } },
           });
           if (!isMy) {
@@ -84,18 +86,18 @@ export default ({ mShenpi, mShenpiMingxi, mShenpiBuzhou, mShenpiNeirong, shenpiC
         const mainData = await mShenpi.findById(req.params.shenpiId);
         switch (req.params.doAction) {
         case 'jujue': {
-          await mShenpiBuzhou.update(
+          await mShenpiMingxi.update(
             { banliyijian: req.params.banliyijian },
             { where: { index: req.params.index, shenpiId: req.params.shenpiId, userId: req.user.id, roleId: req.params.roleId } }
           );
-          await mShenpiBuzhou.update({ isDelete: 0, color: 'red' }, { silent: true, where: { shenpiId: req.params.shenpiId } });
-          await replyModel.update(
-            { zhuangtai: '经办', toUserIds: replyModel.sequelize.literal('initToUserIds') },
+          await mShenpiMingxi.update({ isDelete: 0, color: 'red' }, { silent: true, where: { shenpiId: req.params.shenpiId } });
+          await mShenpiBuzhou.update(
+            { zhuangtai: '经办', toUserIds: mShenpiBuzhou.sequelize.literal('initToUserIds') },
             { where: { shenpiId: req.params.shenpiId } }
           );
-          // const qianyige = await replyModel.findOne({ where: { shenpiId: req.params.shenpiId, id: { $gt: req.params.id } }, order: [['id', 'asc']] });
+          // const qianyige = await mShenpiBuzhou.findOne({ where: { shenpiId: req.params.shenpiId, id: { $gt: req.params.id } }, order: [['id', 'asc']] });
           // 直接驳回到第一步。
-          const qianyige = await replyModel.findOne({
+          const qianyige = await mShenpiBuzhou.findOne({
             where: { shenpiId: req.params.shenpiId },
             order: [['id', 'desc']],
           });
@@ -109,8 +111,8 @@ export default ({ mShenpi, mShenpiMingxi, mShenpiBuzhou, mShenpiNeirong, shenpiC
           break;
         }
         case 'tongyi': {
-          const currentStep = await replyModel.findById(req.params.id);
-          currentStep.toUserNames = await mShenpiBuzhou.findAll({ where: { shenpiId: req.params.shenpiId, index: currentStep.index, isDelete: 0 } });
+          const currentStep = await mShenpiBuzhou.findById(req.params.id);
+          currentStep.toUserNames = await mShenpiMingxi.findAll({ where: { shenpiId: req.params.shenpiId, index: currentStep.index, isDelete: 0 } });
           let gotoNext = true;
           currentStep.toUserNames.map(one => {
             if ((one.userId === req.user.id && one.roleId === req.params.roleId) || currentStep.shenpiType === '单批') {
@@ -129,8 +131,8 @@ export default ({ mShenpi, mShenpiMingxi, mShenpiBuzhou, mShenpiNeirong, shenpiC
           // console.log(JSON.stringify(currentStep.toUserNames), gotoNext, 11);
           // 减少当前处理人
           if (gotoNext) {
-            const xiayige = await replyModel.findOne({
-              where: { shenpiId: req.params.shenpiId, id: { [Op.lt]: req.params.id } },
+            const xiayige = await mShenpiBuzhou.findOne({
+              where: { shenpiId: req.params.shenpiId, id: { $lt: req.params.id } },
               order: [['id', 'desc']],
             });
             if (xiayige) {
@@ -146,7 +148,7 @@ export default ({ mShenpi, mShenpiMingxi, mShenpiBuzhou, mShenpiNeirong, shenpiC
                   .filter(one => one !== '')
                   .join(',')},`;
                 xiayige.toUserIds = `,${req.params.nextUserIds.join(',')},`;
-                await mShenpiBuzhou.update({ isDelete: 1 }, { where: { index: xiayige.index, userId: { [Op.notIn]: req.params.nextUserIds } } });
+                await mShenpiMingxi.update({ isDelete: 1 }, { where: { index: xiayige.index, userId: { $notIn: req.params.nextUserIds } } });
               }
               // 如果传递了下一步的人员，上面已经格式化过了。
               // 这个字段作废掉
@@ -175,7 +177,7 @@ export default ({ mShenpi, mShenpiMingxi, mShenpiBuzhou, mShenpiNeirong, shenpiC
           break;
         }
         if (shenpiConfig.sendSms === true && smsUserIds.length > 0) {
-          models('user')
+          model('user')
             .findAll({ where: { id: { $in: smsUserIds } } })
             .then(users => {
               if (users.length > 0) {
@@ -218,7 +220,7 @@ export default ({ mShenpi, mShenpiMingxi, mShenpiBuzhou, mShenpiNeirong, shenpiC
                               zhuangtai: Code,
                               beizhu: JSON.stringify(results),
                             }));
-                            models('smsSend').bulkCreate(smsInfo);
+                            model('smsSend').bulkCreate(smsInfo);
                             if (Code === 'OK') {
                               // 处理返回参数
                               console.log(results, 'DingdanSendSMS-success');
@@ -241,7 +243,7 @@ export default ({ mShenpi, mShenpiMingxi, mShenpiBuzhou, mShenpiNeirong, shenpiC
           .then(gdInfo => {
             if (gdInfo) {
               req.hooks.mShenpi = gdInfo;
-              const aa = rest.modify(mShenpiNeirong, 'mShenpi');
+              const aa = helper.rest.modify(mShenpiNeirong, 'mShenpi');
               mShenpi.update(
                 {
                   searchString: JSON.stringify(_.omit(req.hooks.mShenpi.get(), ['fujian', 'createdAt', 'updatedAt'])),
@@ -259,16 +261,20 @@ export default ({ mShenpi, mShenpiMingxi, mShenpiBuzhou, mShenpiNeirong, shenpiC
 
   const add = [
     async (req, res, next) => {
-      if (!req.user.isLaowuFenbaoFeiShenpiFaqi) next(error('你没有这个权限!'));
-      req.params.cityName = req.user.cityInfo.name;
-      req.params.cityId = req.user.cityInfo.renliId;
-      req.params.telno = req.user.telno;
-    // 生成流程数据。
-      const replys = [];
-      const UserM = models('user');
-      const DeptM = models('dept');
+      // eslint-disable-next-line no-constant-condition
+      if (false && !req.user.shenpi[name]) {
+        next(error('你没有这个权限!'));
+        return;
+      }
+      const userCityInfo = (req.user.cityInfo || req.user.cityDept || {});
+      req.params.cityName = userCityInfo.name;
+      req.params.cityId = userCityInfo.renliId;
+      // 生成流程数据。
+      const buzhous = [];
+      const UserM = model('user');
+      const DeptM = model('dept');
       let allUserIds = [];
-    // let nextToUsers = JSON.stringify([]);
+      // let nextToUsers = JSON.stringify([]);
       const shenpiLiucheng = [];
       shenpiConfig.liucheng.forEach(level => {
         level.liucheng.forEach(one => {
@@ -290,13 +296,14 @@ export default ({ mShenpi, mShenpiMingxi, mShenpiBuzhou, mShenpiNeirong, shenpiC
           toUserNames.push({ updatedAt: null, index, userId: req.user.id, name: req.user.name, color: 'red', roleId: '250' });
         } else if (tt.zhanghao.role && tt.zhanghao.role.id) {
           userWhere.roleId = {
-            [Op.or]: tt.zhanghao.role.id.map(ttt => ({ [Op.like]: `%,${ttt},%` })),
+            $or: tt.zhanghao.role.id.map(ttt => ({ $like: `%,${ttt},%` })),
           };
           if (tt.cengji !== 1) {
             // 地市级的数据，需要选址选择范围，否则能找到其他地市的人员
-            const fdns = req.user.deptFdn.split('.');
+            const fdns = (req.user.deptFdn || req.user.dept_fdn || '').split('.');
             const dishiFdn = `${_.slice(fdns, 0, tt.cengji).join('.')}.%`;
             const include = [{ model: DeptM, require: true, as: 'userdept', where: { fdn: { $like: dishiFdn } } }];
+            UserM.belongsTo(DeptM, { foreignKey: 'dept_id', sourceKey: 'id', as: 'userdept', scope: { isDelete: 'no' } });
             userList = await UserM.findAll({ where: userWhere, include, limit: 50 });
               // console.log(userList.length);
           } else {
@@ -341,7 +348,7 @@ export default ({ mShenpi, mShenpiMingxi, mShenpiBuzhou, mShenpiNeirong, shenpiC
           req.params.toUserIds = `,${toUserIds.join(',')},`;
         // req.params.toUserNames = JSON.stringify(toUserNames);
         }
-        replys.push(
+        buzhous.push(
         Object.assign(
           {
             shenpiContent: tt.neirong,
@@ -361,41 +368,46 @@ export default ({ mShenpi, mShenpiMingxi, mShenpiBuzhou, mShenpiNeirong, shenpiC
       // nextToUsers = JSON.stringify(toUserNames);
       }
       req.params.allUserIds = `,${allUserIds.join(',')},`;
-    // console.log(replys);
-      req.replys = replys;
+      // console.log(buzhous);
+      req.buzhous = buzhous;
       req.toUserNames = toUserNames;
       next();
     },
-  // fillOtherInfo,
+    // fillOtherInfo,
     (req, res, next) => {
-    // 创建新工单。
+      // 创建新工单。
       req.res_no_send = true;
-      req.params.zhanghao = '未提交';
-      const aa = rest.add(mShenpi, null, 'mShenpi');
-      aa(req, res, () => {
+      req.params.zhuangtai = '未提交';
+      // console.log(req.params, 333);
+      const aa = helper.rest.add(mShenpi, null, 'mShenpi');
+      aa(req, res, (err1) => {
+        if (err1) {
+          next(err1);
+          return;
+        }
         req.params.shenpiId = req.hooks.mShenpi.id;
       // req.params.title = `中移建设有限公司河南分公司${(req.user.cityDept || {}).name || ''}分公司工劳务外包审批`;
-        const bb = rest.add(mShenpiNeirong, null, 'neirong');
+        const bb = helper.rest.add(mShenpiNeirong, null, 'neirong');
         bb(req, res, err => {
           if (err) {
             next(err);
-          } else {
-            req.hooks.mShenpi.update({
-              searchString: JSON.stringify(_.omit(req.hooks.neirong.get(), ['fujian', 'createdAt', 'updatedAt'])),
-            });
-            const replys = req.replys.map(rr => {
-              rr.shenpiId = req.hooks.mShenpi.id;
-              return rr;
-            });
-            mShenpiMingxi
-            .bulkCreate(replys)
-            .then(() => {
-              const toUsers = req.toUserNames.map(rr => ({ ...rr, shenpiId: req.hooks.mShenpi.id }));
-              mShenpiBuzhou.bulkCreate(toUsers);
-              res.send(req.hooks.mShenpi);
-              next();
-            });
+            return;
           }
+          req.hooks.mShenpi.update({
+            searchString: JSON.stringify(_.omit(req.hooks.neirong.get(), ['fujian', 'createdAt', 'updatedAt'])),
+          });
+          const buzhous = req.buzhous.map(rr => {
+            rr.shenpiId = req.hooks.mShenpi.id;
+            return rr;
+          });
+          mShenpiBuzhou
+          .bulkCreate(buzhous)
+          .then(() => {
+            const toUsers = req.toUserNames.map(rr => ({ ...rr, shenpiId: req.hooks.mShenpi.id }));
+            mShenpiMingxi.bulkCreate(toUsers);
+            res.send(req.hooks.mShenpi);
+            next();
+          });
         });
       });
     },
@@ -403,8 +415,8 @@ export default ({ mShenpi, mShenpiMingxi, mShenpiBuzhou, mShenpiNeirong, shenpiC
   ];
 
   const detail = [
-    rest.getter(mShenpi, 'modelName'),
-    rest.assert.exists('hooks.modelName'),
+    helper.getter(mShenpi, 'modelName'),
+    helper.assert.exists('hooks.modelName'),
     (req, res, next) => {
       if (!req.user.isAdmin && req.hooks.modelName.allUserIds.indexOf(`,${req.user.id},`) < 0) {
         next(error('请求的数据不存在或您没权限处理!'));
@@ -413,11 +425,11 @@ export default ({ mShenpi, mShenpiMingxi, mShenpiBuzhou, mShenpiNeirong, shenpiC
 
       const item = req.hooks.modelName.get();
       mShenpiNeirong.findOne({ where: { shenpiId: item.id } })
-      .then(lwInfo => {
-        mShenpiMingxi.findAll({ where: { shenpiId: item.id }, order: [['id', 'desc']] }).then(results => {
-          mShenpiBuzhou.findAll({ where: { shenpiId: item.id, isDelete: 0 } }).then(toUserNames => {
+      .then(neirongInfo => {
+        mShenpiBuzhou.findAll({ where: { shenpiId: item.id }, order: [['id', 'desc']] }).then(results => {
+          mShenpiMingxi.findAll({ where: { shenpiId: item.id, isDelete: 0 } }).then(toUserNames => {
             item.historyList = results.map(rr => ({ ...rr.get(), toUserNames: toUserNames.filter(one => one.index === rr.index) }));
-            res.send(Object.assign({}, item, lwInfo.get(), { id: item.id }));
+            res.send(Object.assign({}, item, neirongInfo.get(), { id: item.id }));
             next();
           });
         });
@@ -428,15 +440,15 @@ export default ({ mShenpi, mShenpiMingxi, mShenpiBuzhou, mShenpiNeirong, shenpiC
   ];
 
   const remove = [
-    rest.getter(mShenpi, 'modelName'),
-    rest.assert.exists('hooks.modelName'),
+    helper.getter(mShenpi, 'modelName'),
+    helper.assert.exists('hooks.modelName'),
     (req, res, next) => {
       mShenpiNeirong.destroy({ where: { shenpiId: req.params.id } });
       mShenpiMingxi.destroy({ where: { shenpiId: req.params.id } });
       mShenpiBuzhou.destroy({ where: { shenpiId: req.params.id } });
       next();
     },
-    rest.remove.hook('modelName').exec(),
+    helper.rest.remove.hook('modelName').exec(),
   ];
 
   return {

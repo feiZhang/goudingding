@@ -17,7 +17,7 @@
     "#USER",
     "/"
   ],
-  "_resolved": "git+https://github.com/feiZhang/goudingding.git#771aaefc4c2077c37cdb6500e3c12adba301e0f2",
+  "_resolved": "git+https://github.com/feiZhang/goudingding.git#d8cba286ad173dec76f24e4fbb1de4fc26babb5d",
   "_spec": "https://github.com/feiZhang/goudingding.git",
   "_where": "/mnt/c/myjob/ttgc/api",
   "author": {
@@ -26,10 +26,11 @@
   "bugs": {
     "url": "https://github.com/feiZhang/goudingding/issues"
   },
+  "bundleDependencies": false,
   "dependencies": {
-    "sequelize": "^3.33.0",
     "lodash": "^4.14.1",
-    "moment": "^2.13.0"
+    "moment": "^2.13.0",
+    "sequelize": "^3.33.0"
   },
   "deprecated": false,
   "description": "个人的私有组件库",

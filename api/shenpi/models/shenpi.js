@@ -1,19 +1,19 @@
 /* eslint-disable max-len */
 /* eslint-disable new-cap */
-import Sequelize from 'sequelize';
+const Sequelize = require('sequelize');
 
-export default ({ baseModel }) => {
-  const { deleteUploadFile, saveUploadFile, formatDbField, baseAttr, baseField, baseExtAttr } = baseModel;
+module.exports = ({ baseModel, U, config }) => {
+  const { generateNo, deleteUploadFile, saveUploadFile, formatDbField, baseAttr, baseField, baseExtAttr } = baseModel;
   return {
     fields: Object.assign({}, baseField, {
       allUserIds: {
-        type: Sequelize.type('string', 1000),
+        type: Sequelize.STRING(1000),
         allowNull: false,
         defaultValue: '',
         comment: '所有的接收人，用于我的工单查询',
       },
       currentUserIds: {
-        type: Sequelize.type('string', 1000),
+        type: Sequelize.STRING(1000),
         allowNull: false,
         defaultValue: '',
         comment: '当前要处理的人',
@@ -27,32 +27,20 @@ export default ({ baseModel }) => {
           return formatDbField(this, 'currentUserNames', 'json');
         },
       },
-      /*        toUserIds: {*/
-      // type: Sequelize.type('string', 1000),
-      // allowNull: false,
-      // defaultValue: '',
-      // comment: '下一步的接受人',
-      // },
-      // toUserNames: {
-      // type: Sequelize.type('string', 2000),
-      // allowNull: false,
-      // defaultValue: '',
-      // comment: '下一步接受人姓名',
-      /* },*/
-      title: {
-        type: Sequelize.type('string', 600),
+      type: {
+        type: Sequelize.STRING(60),
         allowNull: false,
-        defaultValue: '',
-        comment: '标题',
+        defaultValue: '审批',
+        comment: '类型',
       },
-      content: {
-        type: Sequelize.type('string', 3000),
+      no: {
+        type: Sequelize.STRING(60),
         allowNull: false,
         defaultValue: '',
-        comment: '内容',
+        comment: '劳务框架合同编号+流水号',
       },
       searchString: {
-        type: Sequelize.type('string', 6000),
+        type: Sequelize.STRING(6000),
         allowNull: false,
         defaultValue: '',
         comment: '用户快速检索的拼凑字段。',
@@ -102,7 +90,19 @@ export default ({ baseModel }) => {
       comment: '电子工单',
       freezeTableName: true,
       hooks: {
-        beforeCreate: [],
+        beforeCreate: [
+          (model) => {
+            const baseNo = (config.CITY_JC[model.cityId] || 'WZ') + U.moment().format('YYYYMM');
+            return generateNo({
+              baseNo,
+              noModel: U.model('no'),
+              type: model.type,
+            }).then(no => {
+              model.no = no;
+              console.log('gongdanNo', model.no);
+            });
+          },
+        ],
         beforeUpdate: [],
         afterCreate: [saveUploadFile],
         afterUpdate: [saveUploadFile],

@@ -1,6 +1,14 @@
-import shenpi from './api/shenpi/index.js';
-import baseModel from './api/models/base';
+/* eslint-disable arrow-body-style */
+/* eslint-disable max-len */
+const shenpi = require('./api/shenpi/index.js');
+const baseModel = require('./api/models/base');
 
-export default ({ config, U }) => ({
-  shenpi: shenpi({ baseModel: baseModel({ config, U }) }),
-});
+module.exports = ({ config, U }) => {
+  // console.log(config);
+  return {
+    shenpi: (shenpiConfig) => {
+      // console.log(shenpiConfig);
+      return shenpi({ baseModel: baseModel({ config, U }), U, config, ...shenpiConfig });
+    },
+  };
+};
