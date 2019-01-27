@@ -115,6 +115,7 @@ module.exports = (config) => {
           currentStep.toUserNames = await mShenpiMingxi.findAll({ where: { shenpiId: req.params.shenpiId, index: currentStep.index, isDelete: 0 } });
           let gotoNext = true;
           currentStep.toUserNames.map(one => {
+            // 一个人会有多个角色，前端要传递参数，此次审批的是哪个角色
             if ((one.userId === req.user.id && one.roleId === req.params.roleId) || currentStep.shenpiType === '单批') {
               if (one.userId === req.user.id && one.roleId === req.params.roleId) {
                 one.banliyijian = req.params.banliyijian;
@@ -291,9 +292,9 @@ module.exports = (config) => {
         const index = ii + 1;
         let userList = [];
         // 发起人
-        if (tt.zhanghao.isme === 1) {
+        if (tt.zhanghao.isme !== undefined) {
           userList = [req.user];
-          toUserNames.push({ updatedAt: null, index, userId: req.user.id, name: req.user.name, color: 'red', roleId: '250' });
+          toUserNames.push({ updatedAt: null, index, userId: req.user.id, name: req.user.name, color: 'red', roleId: tt.zhanghao.isme });
         } else if (tt.zhanghao.role && tt.zhanghao.role.id) {
           userWhere.roleId = {
             $or: tt.zhanghao.role.id.map(ttt => ({ $like: `%,${ttt},%` })),
@@ -354,7 +355,7 @@ module.exports = (config) => {
             shenpiContent: tt.neirong,
             shenpiDept: tt.bumen,
             zhuangtai: '经办',
-            shenpiType: tt.shenpiType || '多批',
+            shenpiType: tt.shenpiType || '单批',
             index,
             toUserIds: `,${toUserIds.join(',')},`,
             initToUserIds: `,${toUserIds.join(',')},`,

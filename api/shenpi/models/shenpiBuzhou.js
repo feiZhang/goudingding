@@ -68,12 +68,6 @@ module.exports = ({ baseModel }) => {
         defaultValue: '',
         comment: '内容',
       },
-      banliyijian: {
-        type: Sequelize.STRING(3000),
-        allowNull: false,
-        defaultValue: '',
-        comment: '办理意见',
-      },
       fujian: {
         type: Sequelize.TEXT,
         allowNull: true,

@@ -4,11 +4,12 @@ const shenpi = require('./api/shenpi/index.js');
 const baseModel = require('./api/models/base');
 
 module.exports = ({ config, U }) => {
-  // console.log(config);
+  const theBaseModel = baseModel({ config, U });
   return {
+    baseModel: theBaseModel,
     shenpi: (shenpiConfig) => {
       // console.log(shenpiConfig);
-      return shenpi({ baseModel: baseModel({ config, U }), U, config, ...shenpiConfig });
+      return shenpi({ baseModel: theBaseModel, U, config, ...shenpiConfig });
     },
   };
 };
