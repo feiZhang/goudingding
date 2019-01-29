@@ -9,7 +9,7 @@ const { exec } = require('child_process');
 
 const Op = Sequelize.Op;
 
-module.exports = ({ U: { models }, config: { service, upload } }) => {
+module.exports = ({ U, config: { service, upload } }) => {
   const formatDbField = (model, fieldName, type, defaultVal = []) => {
     let tValue = model.getDataValue(fieldName);
     if (tValue === undefined) return undefined;
@@ -308,7 +308,7 @@ module.exports = ({ U: { models }, config: { service, upload } }) => {
     },
 
     saveUploadFile(model) {
-      console.log(model);
+      // console.log(model);
       const uploadFields = (model._modelOptions || model.$modelOptions).uploadFields;
       const changed = model.changed();
       if (changed) {
@@ -326,7 +326,7 @@ module.exports = ({ U: { models }, config: { service, upload } }) => {
                     if (fs.existsSync(tFile)) {
                       console.log(`mv ${tFile} ${upload.dir}${nF.path}/${nF.uid}`);
                       exec(`mv ${tFile} ${upload.dir}${nF.path}/${nF.uid}`);
-                      models('uploadFile').update(
+                      U.model('uploadFile').update(
                         Object.assign(nF, {
                           dataId: model.id,
                           dataType: (model._modelOptions || model.$modelOptions).name.singular,
@@ -350,7 +350,7 @@ module.exports = ({ U: { models }, config: { service, upload } }) => {
                       // console.log('rm ' + config.upload.dir + "/" + oldFile.uid);
                       console.log(`mv ${upload.dir}${oldFile.path}/${oldFile.uid} ${upload.deleteDir}/`);
                       exec(`mv ${upload.dir}${oldFile.path}/${oldFile.uid} ${upload.deleteDir}/`);
-                      models('uploadFile').destroy({ where: { uid: oldFile.uid } });
+                      U.model('uploadFile').destroy({ where: { uid: oldFile.uid } });
                       // child_process.exec('rm ' + config.upload.dir + "/" + oldFile.uid);
                       // U.fs.unlink(config.upload.dir + "/" + oldFile.uid);  //文件不存在时出错
                     } catch (e) {
@@ -392,7 +392,7 @@ module.exports = ({ U: { models }, config: { service, upload } }) => {
             if (!model.isNewRecord) {
               where.id = { [Op.ne]: model.id };
             }
-            const results = await models((model._modelOptions || model.$modelOptions).name.singular).find({ where });
+            const results = await U.model((model._modelOptions || model.$modelOptions).name.singular).find({ where });
             if (results) {
               return model.sequelize.Promise.reject(new Error(`${one.message}(${tempCheckValue.join(',')})!`));
             }

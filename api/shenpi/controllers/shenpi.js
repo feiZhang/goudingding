@@ -3,14 +3,13 @@ const _ = require('lodash');
 const moment = require('moment');
 
 module.exports = (config) => {
-  const { name, shenpiConfig, U: { rest, error, model = [], sms } } = config;
+  const { name, shenpiConfig, U: { rest, error, model, sms } } = config;
   const { helper } = rest;
   // console.log(name, model);
   if (!name) return {};
   const mShenpi = model(name);
   const mShenpiMingxi = model(`${name}Mingxi`);
   const mShenpiBuzhou = model(`${name}Buzhou`);
-  const mShenpiNeirong = model(`${name}Neirong`);
   const getAllUserIds = ({ curV, oldV, newV }) => {
     _.pullAll(curV, _.difference(oldV, newV));
     return _.union(curV, newV);
@@ -33,7 +32,7 @@ module.exports = (config) => {
       } else if (!req.user.isAdmin) {
         req.params.creatorId = req.user.id;
       }
-      req.params.includes = 'neirong';
+      // req.params.includes = 'neirong';
       req.params.includes += ',tagsData';
       req.params.tagsData = { creatorId: req.user.id };
       if (req.params.tagsIds) {
@@ -72,6 +71,11 @@ module.exports = (config) => {
   const modify = [
   // fillOtherInfo,
     async (req, res, next) => {
+      req.mShenpiNeirong = model(`${name}Neirong_${(req.params.shenpiType || '').toLowerCase()}`);
+      if (!req.mShenpiNeirong) {
+        next(error('非法请求!'));
+        return;
+      }
       if (req.params.doType === 'reply') {
         if (!req.user.isAdmin) {
           const isMy = await mShenpiBuzhou.findOne({
@@ -84,6 +88,7 @@ module.exports = (config) => {
         }
         let smsUserIds = [];
         const mainData = await mShenpi.findById(req.params.shenpiId);
+        // 根据类型匹配内容表。
         switch (req.params.doAction) {
         case 'jujue': {
           await mShenpiMingxi.update(
@@ -177,7 +182,7 @@ module.exports = (config) => {
         default:
           break;
         }
-        if (shenpiConfig.sendSms === true && smsUserIds.length > 0) {
+        if (shenpiConfig[req.params.shenpiType].sendSms === true && smsUserIds.length > 0) {
           model('user')
             .findAll({ where: { id: { $in: smsUserIds } } })
             .then(users => {
@@ -185,7 +190,7 @@ module.exports = (config) => {
                 const userTels = users
                   .map(one => one.telno)
                   .join(',');
-                mShenpiNeirong
+                req.mShenpiNeirong
                   .findOne({ where: { shenpiId: req.params.shenpiId } })
                   .then(gdInfo => {
                     if (gdInfo) {
@@ -239,12 +244,12 @@ module.exports = (config) => {
         res.send({ shenpiId: req.params.shenpiId });
         next();
       } else {
-        mShenpiNeirong
+        req.mShenpiNeirong
           .findOne({ where: { shenpiId: req.params.id } })
           .then(gdInfo => {
             if (gdInfo) {
               req.hooks.mShenpi = gdInfo;
-              const aa = helper.rest.modify(mShenpiNeirong, 'mShenpi');
+              const aa = helper.rest.modify(req.mShenpiNeirong, 'mShenpi');
               mShenpi.update(
                 {
                   searchString: JSON.stringify(_.omit(req.hooks.mShenpi.get(), ['fujian', 'createdAt', 'updatedAt'])),
@@ -262,6 +267,8 @@ module.exports = (config) => {
 
   const add = [
     async (req, res, next) => {
+      req.mShenpiNeirong = model(`${name}Neirong_${(req.params.shenpiType || '').toLowerCase()}`);
+      console.log(`${name}Neirong_${(req.params.shenpiType || '').toLowerCase()}`, req.mShenpiNeirong);
       // eslint-disable-next-line no-constant-condition
       if (false && !req.user.shenpi[name]) {
         next(error('你没有这个权限!'));
@@ -277,7 +284,7 @@ module.exports = (config) => {
       let allUserIds = [];
       // let nextToUsers = JSON.stringify([]);
       const shenpiLiucheng = [];
-      shenpiConfig.liucheng.forEach(level => {
+      shenpiConfig[req.params.shenpiType].liucheng.forEach(level => {
         level.liucheng.forEach(one => {
           shenpiLiucheng.push({ ...one, cengji: level.cengji });
         });
@@ -315,7 +322,7 @@ module.exports = (config) => {
           // eslint-disable-next-line no-loop-func
           tt.zhanghao.role.id.forEach(roleId => {
             const roleUserList = userList.filter(one => one.roleId.indexOf(`,${roleId},`) >= 0);
-            if (shenpiConfig.readOnly.indexOf(roleId) >= 0) {
+            if (shenpiConfig[req.params.shenpiType].readOnly.indexOf(roleId) >= 0) {
               allUserIds = allUserIds.concat(
                   roleUserList.map(one => one.id)
                 );
@@ -388,7 +395,7 @@ module.exports = (config) => {
         }
         req.params.shenpiId = req.hooks.mShenpi.id;
       // req.params.title = `中移建设有限公司河南分公司${(req.user.cityDept || {}).name || ''}分公司工劳务外包审批`;
-        const bb = helper.rest.add(mShenpiNeirong, null, 'neirong');
+        const bb = helper.rest.add(req.mShenpiNeirong, null, 'neirong');
         bb(req, res, err => {
           if (err) {
             next(err);
@@ -425,7 +432,8 @@ module.exports = (config) => {
       }
 
       const item = req.hooks.modelName.get();
-      mShenpiNeirong.findOne({ where: { shenpiId: item.id } })
+      req.mShenpiNeirong = model(`${name}Neirong_${item.shenpiType.toLowerCase()}`);
+      req.mShenpiNeirong.findOne({ where: { shenpiId: item.id } })
       .then(neirongInfo => {
         mShenpiBuzhou.findAll({ where: { shenpiId: item.id }, order: [['id', 'desc']] }).then(results => {
           mShenpiMingxi.findAll({ where: { shenpiId: item.id, isDelete: 0 } }).then(toUserNames => {
@@ -444,7 +452,9 @@ module.exports = (config) => {
     helper.getter(mShenpi, 'modelName'),
     helper.assert.exists('hooks.modelName'),
     (req, res, next) => {
-      mShenpiNeirong.destroy({ where: { shenpiId: req.params.id } });
+      const item = req.hooks.modelName.get();
+      req.mShenpiNeirong = model(`${name}Neirong_${item.shenpiType.toLowerCase()}`);
+      req.mShenpiNeirong.destroy({ where: { shenpiId: req.params.id } });
       mShenpiMingxi.destroy({ where: { shenpiId: req.params.id } });
       mShenpiBuzhou.destroy({ where: { shenpiId: req.params.id } });
       next();

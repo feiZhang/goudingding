@@ -27,10 +27,11 @@ module.exports = ({ baseModel, U, config }) => {
           return formatDbField(this, 'currentUserNames', 'json');
         },
       },
-      type: {
+      shenpiTitle: { type: Sequelize.STRING(2000), allowNull: false, defaultValue: '', comment: '' },
+      shenpiType: {
         type: Sequelize.STRING(60),
         allowNull: false,
-        defaultValue: '审批',
+        defaultValue: '',
         comment: '类型',
       },
       no: {
