@@ -289,10 +289,11 @@ module.exports = (config) => {
           shenpiLiucheng.push({ ...one, cengji: level.cengji });
         });
       });
-    // console.log(JSON.stringify(shenpiConfig),allUserIds, 'shenpiLiucheng');
-    // 为了方便生成nextToUser倒序来
-      const toUserNames = [];
+      // console.log(JSON.stringify(shenpiConfig),allUserIds, 'shenpiLiucheng');
+      // 为了方便生成nextToUser倒序来
+      let allUserNames = [];
       for (let ii = shenpiLiucheng.length - 1; ii >= 0; ii -= 1) {
+        const toUserNames = [];
         let otherInfo = {};
         const tt = shenpiLiucheng[ii];
         const userWhere = {};
@@ -302,7 +303,10 @@ module.exports = (config) => {
         if (tt.zhanghao.isme !== undefined) {
           userList = [req.user];
           toUserNames.push({ updatedAt: null, index, userId: req.user.id, name: req.user.name, color: 'red', roleId: tt.zhanghao.isme });
-        } else if (tt.zhanghao.role && tt.zhanghao.role.id) {
+        } else if (tt.zhanghao.role) {
+          if (tt.zhanghao.role instanceof Function) {
+            tt.zhanghao.role.id = tt.zhanghao.role({ data: req.params, user: req.user });
+          }
           userWhere.roleId = {
             $or: tt.zhanghao.role.id.map(ttt => ({ $like: `%,${ttt},%` })),
           };
@@ -322,11 +326,7 @@ module.exports = (config) => {
           // eslint-disable-next-line no-loop-func
           tt.zhanghao.role.id.forEach(roleId => {
             const roleUserList = userList.filter(one => one.roleId.indexOf(`,${roleId},`) >= 0);
-            if (shenpiConfig[req.params.shenpiType].readOnly.indexOf(roleId) >= 0) {
-              allUserIds = allUserIds.concat(
-                  roleUserList.map(one => one.id)
-                );
-            } else {
+            if (shenpiConfig[req.params.shenpiType].readOnly.indexOf(roleId) < 0) {
               roleUserList.forEach(mm => {
                 toUserNames.push({
                   updatedAt: null,
@@ -340,11 +340,12 @@ module.exports = (config) => {
             }
           });
         }
-        const toUserIds = userList.map(mm => mm.id);
-        allUserIds = toUserIds.concat(allUserIds);
+        const toUserIds = toUserNames.map(mm => mm.userId);
+        allUserIds = userList.map(mm => mm.id).concat(allUserIds);
+        allUserNames = toUserNames.concat(allUserNames);
         if (ii === 0) {
           req.params.currentUserIds = `,${toUserIds.join(',')},`;
-        // req.params.currentUserNames = JSON.stringify(toUserNames);
+          // req.params.currentUserNames = JSON.stringify(toUserNames);
           otherInfo = {
             creatorId: req.user.id,
             creatorName: req.user.name,
@@ -378,7 +379,7 @@ module.exports = (config) => {
       req.params.allUserIds = `,${allUserIds.join(',')},`;
       // console.log(buzhous);
       req.buzhous = buzhous;
-      req.toUserNames = toUserNames;
+      req.toUserNames = allUserNames;
       next();
     },
     // fillOtherInfo,
@@ -403,6 +404,7 @@ module.exports = (config) => {
           }
           req.hooks.mShenpi.update({
             searchString: JSON.stringify(_.omit(req.hooks.neirong.get(), ['fujian', 'createdAt', 'updatedAt'])),
+            shenpiTitle: req.hooks.neirong.gaishu(),
           });
           const buzhous = req.buzhous.map(rr => {
             rr.shenpiId = req.hooks.mShenpi.id;

@@ -54,7 +54,9 @@ module.exports = ({ baseModel }) => {
         afterUpdate: [saveUploadFile],
         afterDestroy: deleteUploadFile,
       },
-      instanceMethods: {},
+      instanceMethods: {
+        gaishu: () => this.title,
+      },
       classMethods: {},
       uploadFields: ['fujian'],
     }),
