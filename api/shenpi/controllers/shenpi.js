@@ -125,7 +125,7 @@ module.exports = (config) => {
               if (one.userId === req.user.id && one.roleId === req.params.roleId) {
                 one.banliyijian = req.params.banliyijian;
               }
-              one.color = 'block';
+              one.color = 'black';
               one.updatedTime = moment().format('YYYY-MM-DD HH:mm:ss');
               one.save();
             }
@@ -331,6 +331,7 @@ module.exports = (config) => {
                 toUserNames.push({
                   updatedAt: null,
                   index,
+                  deptName: mm.userdept.name,
                   userId: mm.id,
                   name: mm.name,
                   color: 'red',

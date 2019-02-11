@@ -20,6 +20,11 @@ module.exports = ({ baseModel }) => {
         allowNull: false,
         defaultValue: 0,
       },
+      deptName: {
+        type: Sequelize.STRING(300),
+        allowNull: false,
+        defaultValue: '',
+      },
       name: {
         type: Sequelize.STRING(300),
         allowNull: false,
