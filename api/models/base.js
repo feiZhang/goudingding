@@ -33,35 +33,35 @@ module.exports = ({ U, config: { service, upload } }) => {
       tValue = tValue ? moment(tValue).format('YYYY-MM-DD HH:mm:ss') : '';
       break;
     case 'files': {
-        const list = tValue ? JSON.parse(tValue) : [];
-        // console.log("formatDbField1", fieldName, tValue);
-        // list = list.map(item => {
-        //   if (!item.path) {
-        //     //在这里进行path设置，会在数据creater之前，进行path设定，从而让 saveUploadFile 函数在afterCreate中执行，保证获取到数据的id
-        //     //数据保存是，从临时上传目录copy文件到实际存放的目标目录
-        //     const monthPath = moment().format("YYYYMM");
-        //     const dayPath = monthPath + "/" + moment().format("DD");
-        //     if (!U.fs.existsSync(config.upload.dir + "/" + monthPath)) U.fs.mkdir(config.upload.dir + "/" + monthPath);
-        //     if (!U.fs.existsSync(config.upload.dir + "/" + dayPath)) U.fs.mkdir(config.upload.dir + "/" + dayPath);
-        //     item.path = "/" + dayPath;
-        //   }
-        //   return item;
-        // });
-        // tValue = JSON.stringify(list);
-        // model[fieldName] = tValue;
-        let key = '';
-        const keyFile = `${upload.dir}/photo.txt`;
-        if (fs.existsSync(keyFile)) {
-          key = fs.readFileSync(keyFile);
-        }
-        tValue = list.map(item => {
-          item.url = item && item.uid ? `${upload.accessUrl}?notgzip=1&f=${item.path || ''}/${item.uid}&n=${item.name}&key=${key}` : '';
-          return item;
-        });
-        // tValue = JSON.stringify(list);
-        // console.log("formatDbField", fieldName, tValue);
-        break;
+      const list = tValue ? JSON.parse(tValue) : [];
+      // console.log("formatDbField1", fieldName, tValue);
+      // list = list.map(item => {
+      //   if (!item.path) {
+      //     //在这里进行path设置，会在数据creater之前，进行path设定，从而让 saveUploadFile 函数在afterCreate中执行，保证获取到数据的id
+      //     //数据保存是，从临时上传目录copy文件到实际存放的目标目录
+      //     const monthPath = moment().format("YYYYMM");
+      //     const dayPath = monthPath + "/" + moment().format("DD");
+      //     if (!U.fs.existsSync(config.upload.dir + "/" + monthPath)) U.fs.mkdir(config.upload.dir + "/" + monthPath);
+      //     if (!U.fs.existsSync(config.upload.dir + "/" + dayPath)) U.fs.mkdir(config.upload.dir + "/" + dayPath);
+      //     item.path = "/" + dayPath;
+      //   }
+      //   return item;
+      // });
+      // tValue = JSON.stringify(list);
+      // model[fieldName] = tValue;
+      let key = '';
+      const keyFile = `${upload.dir}/photo.txt`;
+      if (fs.existsSync(keyFile)) {
+        key = fs.readFileSync(keyFile);
       }
+      tValue = list.map(item => {
+        item.url = item && item.uid ? `${upload.accessUrl}?notgzip=1&f=${item.path || ''}/${item.uid}&n=${item.name}&key=${key}` : '';
+        return item;
+      });
+      // tValue = JSON.stringify(list);
+      // console.log("formatDbField", fieldName, tValue);
+      break;
+    }
     default:
       break;
     }
@@ -410,34 +410,6 @@ module.exports = ({ U, config: { service, upload } }) => {
         else model.no = `${benYue}00001`;
         options.fields.push('no');
       });
-    },
-
-    generateNo: async ({ baseNo, noModel, type = '通用', length = 5 }) => {
-      // 这里无法取到model，只能通过参数传递；
-      let install = false;
-      let no = '';
-      let times = 0;
-      while (!install && ++times < 200) {
-        // {no:"ZZ20181200001"};//
-        const result = await noModel.findOne({
-          where: { type, no: { $like: `${baseNo}%` } },
-          order: [['no', 'desc']],
-        });
-        no = '1';
-        if (result) {
-          no = (+result.no.substr(result.no.length - length, length) + 1).toString();
-        }
-        no = `${baseNo}${'0000000000'.substr(0, length - no.length)}${no}`;
-
-        try {
-          install = await noModel.build({ type, no }).save();
-        } catch (error) {
-          console.log(error, install, 'no');
-          install = false;
-        }
-      }
-      // console.log(baseNo, no);
-      return no;
     },
   };
 };

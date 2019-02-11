@@ -2,8 +2,8 @@
 /* eslint-disable new-cap */
 const Sequelize = require('sequelize');
 
-module.exports = ({ baseModel, U, config }) => {
-  const { generateNo, deleteUploadFile, saveUploadFile, formatDbField, baseAttr, baseField, baseExtAttr } = baseModel;
+module.exports = ({ baseModel }) => {
+  const { deleteUploadFile, saveUploadFile, formatDbField, baseAttr, baseField, baseExtAttr } = baseModel;
   return {
     fields: Object.assign({}, baseField, {
       allUserIds: {
@@ -91,19 +91,7 @@ module.exports = ({ baseModel, U, config }) => {
       comment: '电子工单',
       freezeTableName: true,
       hooks: {
-        beforeCreate: [
-          (model) => {
-            const baseNo = (config.CITY_JC[model.cityId] || 'WZ') + U.moment().format('YYYYMM');
-            return generateNo({
-              baseNo,
-              noModel: U.model('no'),
-              type: model.type,
-            }).then(no => {
-              model.no = no;
-              console.log('gongdanNo', model.no);
-            });
-          },
-        ],
+        beforeCreate: [],
         beforeUpdate: [],
         afterCreate: [saveUploadFile],
         afterUpdate: [saveUploadFile],

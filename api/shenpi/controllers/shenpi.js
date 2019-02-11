@@ -1,6 +1,7 @@
 /* eslint-disable max-len */
 const _ = require('lodash');
 const moment = require('moment');
+const commonLib = require('../../common');
 
 module.exports = (config) => {
   const { name, shenpiConfig, U: { rest, error, model, sms } } = config;
@@ -277,6 +278,14 @@ module.exports = (config) => {
       const userCityInfo = (req.user.cityInfo || req.user.cityDept || {});
       req.params.cityName = userCityInfo.name;
       req.params.cityId = userCityInfo.renliId;
+
+      const baseNo = (config.config.CITY_JC[req.params.cityId] || 'WZ') + moment().format('YYYYMM');
+      req.params.no = await commonLib.generateNo({
+        baseNo,
+        noModel: model('no'),
+        type: model.type,
+      });
+
       // 生成流程数据。
       const buzhous = [];
       const UserM = model('user');
@@ -310,17 +319,18 @@ module.exports = (config) => {
           userWhere.roleId = {
             $or: tt.zhanghao.role.id.map(ttt => ({ $like: `%,${ttt},%` })),
           };
+          UserM.belongsTo(DeptM, { foreignKey: 'dept_id', sourceKey: 'id', as: 'userdept', scope: { isDelete: 'no' } });
           if (tt.cengji !== 1) {
             // 地市级的数据，需要选址选择范围，否则能找到其他地市的人员
             const fdns = (req.user.deptFdn || req.user.dept_fdn || '').split('.');
             const dishiFdn = `${_.slice(fdns, 0, tt.cengji).join('.')}.%`;
             const include = [{ model: DeptM, require: true, as: 'userdept', where: { fdn: { $like: dishiFdn } } }];
-            UserM.belongsTo(DeptM, { foreignKey: 'dept_id', sourceKey: 'id', as: 'userdept', scope: { isDelete: 'no' } });
             userList = await UserM.findAll({ where: userWhere, include, limit: 50 });
               // console.log(userList.length);
           } else {
-            userList = await UserM.findAll({ where: userWhere, limit: 50 });
-              // console.log(userList.length);
+            const include = [{ model: DeptM, require: true, as: 'userdept' }];
+            userList = await UserM.findAll({ where: userWhere, include, limit: 50 });
+            // console.log(userList.length);
           }
           // 为了在前端摆放的合适的格子里，需要角色数据
           // eslint-disable-next-line no-loop-func
@@ -328,6 +338,7 @@ module.exports = (config) => {
             const roleUserList = userList.filter(one => one.roleId.indexOf(`,${roleId},`) >= 0);
             if (shenpiConfig[req.params.shenpiType].readOnly.indexOf(roleId) < 0) {
               roleUserList.forEach(mm => {
+                console.log(mm, mm.userdept);
                 toUserNames.push({
                   updatedAt: null,
                   index,

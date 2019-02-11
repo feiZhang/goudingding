@@ -13,6 +13,6 @@ module.exports = ({ baseModel, name, config, U, shenpiConfig }) => ({
     shenpiNeirong: shenpiNeirong({ baseModel }),
   },
   controllers: {
-    shenpi: () => shenpiController({ name, U, shenpiConfig }),
+    shenpi: () => shenpiController({ name, U, shenpiConfig, config }),
   },
 });
