@@ -1,4 +1,7 @@
 /* eslint-disable max-len */
+/**
+ * req.viewShenpi = true  能够查看所有审批数据
+ */
 const _ = require('lodash');
 const moment = require('moment');
 const commonLib = require('../../common');
@@ -24,7 +27,9 @@ module.exports = (config) => {
       if (req.params.sendToMy) {
         if (req.params.isHistory) {
           // 允许省公司人员或劳务订单查看人员	参看本部门相关的订单。
-          req.params.allUserIds_like = `%,${req.user.id},%`;
+          if (req.viewShenpi !== true) {
+            req.params.allUserIds_like = `%,${req.user.id},%`;
+          }
           if (!req.params.zhuangtais) req.params.zhuangtais = '已结束,办理中';
         } else {
           req.params.currentUserIds_like = `%,${req.user.id},%`;
@@ -78,14 +83,12 @@ module.exports = (config) => {
         return;
       }
       if (req.params.doType === 'reply') {
-        if (!req.user.isAdmin) {
-          const isMy = await mShenpiBuzhou.findOne({
-            where: { id: req.params.id, toUserIds: { $like: `%,${req.user.id},%` } },
-          });
-          if (!isMy) {
-            next(error('请求的数据不存在或您没权限处理!'));
-            return;
-          }
+        const isMy = await mShenpiBuzhou.findOne({
+          where: { id: req.params.id, toUserIds: { $like: `%,${req.user.id},%` } },
+        });
+        if (!isMy) {
+          next(error('请求的数据不存在或您没权限处理!'));
+          return;
         }
         let smsUserIds = [];
         const mainData = await mShenpi.findById(req.params.shenpiId);
@@ -338,7 +341,7 @@ module.exports = (config) => {
             const roleUserList = userList.filter(one => one.roleId.indexOf(`,${roleId},`) >= 0);
             if (shenpiConfig[req.params.shenpiType].readOnly.indexOf(roleId) < 0) {
               roleUserList.forEach(mm => {
-                console.log(mm, mm.userdept);
+                // console.log(mm, mm.userdept);
                 toUserNames.push({
                   updatedAt: null,
                   index,
@@ -440,7 +443,7 @@ module.exports = (config) => {
     helper.getter(mShenpi, 'modelName'),
     helper.assert.exists('hooks.modelName'),
     (req, res, next) => {
-      if (!req.user.isAdmin && req.hooks.modelName.allUserIds.indexOf(`,${req.user.id},`) < 0) {
+      if (!req.viewShenpi && req.hooks.modelName.allUserIds.indexOf(`,${req.user.id},`) < 0) {
         next(error('请求的数据不存在或您没权限处理!'));
         return;
       }
