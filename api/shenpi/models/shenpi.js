@@ -73,6 +73,11 @@ module.exports = ({ baseModel }) => {
           return formatDbField(this, 'lastJiezhiTime', 'datetime');
         },
       },
+      creatorCityName: {
+        type: Sequelize.STRING(100),
+        allowNull: false,
+        defaultValue: '',
+      },
       zhuangtai: {
         type: Sequelize.ENUM('未提交', '已结束', '办理中'),
         allowNull: false,

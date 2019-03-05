@@ -186,7 +186,7 @@ module.exports = (config) => {
         default:
           break;
         }
-        if (shenpiConfig[req.params.shenpiType].sendSms === true && smsUserIds.length > 0) {
+        if (shenpiConfig[req.params.shenpiType].sendSms && smsUserIds.length > 0) {
           model('user')
             .findAll({ where: { id: { $in: smsUserIds } } })
             .then(users => {
@@ -194,28 +194,18 @@ module.exports = (config) => {
                 const userTels = users
                   .map(one => one.telno)
                   .join(',');
-                req.mShenpiNeirong
-                  .findOne({ where: { shenpiId: req.params.shenpiId } })
-                  .then(gdInfo => {
-                    if (gdInfo) {
-                      // const kjhtName = gdInfo.kjhtName || "";
-                      // console.log(userTels, kjhtName, kjhtName.substr(0, 20), kjhtName.substr(20, 20), kjhtName.substr(40, 20), "DingdanSendSMS");
-                      // const tContent = kjhtName.substr(0, 20);
-                      // const tContent1 = kjhtName.substr(20, 20);
-                      // const tContent2 = kjhtName.substr(40, 20);
-                      // const smsContent = JSON.stringify({ title: '工程劳务订单', content: tContent, content1: tContent1, content2: tContent2 });
-                      const smsContent = JSON.stringify({
-                        title: `[${gdInfo.title}]`,
-                        no: gdInfo.no,
-                        userName: `[${gdInfo.creatorName}]`,
-                        city: `[${gdInfo.cityName}]`,
-                      });
+                mShenpi
+                  .findOne({ where: { id: req.params.shenpiId } })
+                  .then(shenpiInfo => {
+                    if (shenpiInfo) {
+                      const smsParams = shenpiConfig[req.params.shenpiType].sendSms(shenpiInfo);
                       sms
                         .sendSMS({
                           PhoneNumbers: userTels,
                           SignName: '河南铁通',
                           TemplateCode: 'SMS_155856246',
-                          TemplateParam: smsContent,
+                          TemplateParam: '',
+                          ...smsParams,
                         })
                         .then(
                           results => {
@@ -224,9 +214,9 @@ module.exports = (config) => {
                               userId: one.id,
                               deptId: one.deptId,
                               renliId: one.renliId,
-                              type: '劳务分包费审批',
+                              type: `Shenpi_${req.params.shenpiType}`,
                               telno: one.telno,
-                              content: smsContent,
+                              content: smsParams.TemplateParam,
                               zhuangtai: Code,
                               beizhu: JSON.stringify(results),
                             }));
@@ -237,6 +227,17 @@ module.exports = (config) => {
                             }
                           },
                           err => {
+                            const smsInfo = users.map(one => ({
+                              userId: one.id,
+                              deptId: one.deptId,
+                              renliId: one.renliId,
+                              type: `Shenpi_${req.params.shenpiType}`,
+                              telno: one.telno,
+                              content: smsParams.TemplateParam,
+                              zhuangtai: 'error',
+                              beizhu: JSON.stringify(err),
+                            }));
+                            model('smsSend').bulkCreate(smsInfo);
                             console.log(err, 'DingdanSendSMS-error');
                           }
                         );
@@ -257,6 +258,7 @@ module.exports = (config) => {
               mShenpi.update(
                 {
                   searchString: JSON.stringify(_.omit(req.hooks.mShenpi.get(), ['fujian', 'createdAt', 'updatedAt'])),
+                  shenpiTitle: gdInfo.gaishu(),
                 },
                 { where: { id: req.params.id } }
               );
@@ -271,6 +273,7 @@ module.exports = (config) => {
 
   const add = [
     async (req, res, next) => {
+      req.params.creatorCityName = req.user.cityDept.name;
       req.mShenpiNeirong = model(`${name}Neirong_${(req.params.shenpiType || '').toLowerCase()}`);
       console.log(`${name}Neirong_${(req.params.shenpiType || '').toLowerCase()}`, req.mShenpiNeirong);
       // eslint-disable-next-line no-constant-condition
