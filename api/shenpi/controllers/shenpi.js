@@ -320,19 +320,25 @@ module.exports = (config) => {
           toUserNames.push({ updatedAt: null, index, userId: req.user.id, name: req.user.name, color: 'red', roleId: tt.zhanghao.isme });
         } else if (tt.zhanghao.role) {
           if (tt.zhanghao.role instanceof Function) {
-            tt.zhanghao.role.id = tt.zhanghao.role({ data: req.params, user: req.user });
+            tt.zhanghao.role = { id: tt.zhanghao.role({ data: req.params, user: req.user, liucheng: shenpiLiucheng, index: ii }) };
           }
-          userWhere.roleId = {
-            $or: tt.zhanghao.role.id.map(ttt => ({ $like: `%,${ttt},%` })),
-          };
+          if (tt.zhanghao.role.id === false) {
+            // eslint-disable-next-line no-continue
+            continue;
+          }
+          if (Array.isArray(tt.zhanghao.role.id) && tt.zhanghao.role.id.length > 0) {
+            userWhere.roleId = {
+              $or: tt.zhanghao.role.id.map(ttt => ({ $like: `%,${ttt},%` })),
+            };
+          }
           UserM.belongsTo(DeptM, { foreignKey: 'dept_id', sourceKey: 'id', as: 'userdept', scope: { isDelete: 'no' } });
-          if (tt.cengji !== 1) {
+          if (tt.cengji > 0) {
             // 地市级的数据，需要选址选择范围，否则能找到其他地市的人员
             const fdns = (req.user.deptFdn || req.user.dept_fdn || '').split('.');
             const dishiFdn = `${_.slice(fdns, 0, tt.cengji).join('.')}.%`;
             const include = [{ model: DeptM, require: true, as: 'userdept', where: { fdn: { $like: dishiFdn } } }];
             userList = await UserM.findAll({ where: userWhere, include, limit: 50 });
-              // console.log(userList.length);
+            // console.log(userList.length);
           } else {
             const include = [{ model: DeptM, require: true, as: 'userdept' }];
             userList = await UserM.findAll({ where: userWhere, include, limit: 50 });
