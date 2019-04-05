@@ -44,6 +44,12 @@ module.exports = ({ baseModel }) => {
           return formatDbField(this, 'nextToUsers', 'json', []);
         },
       },
+      selectUser: {
+        type: Sequelize.INTEGER.UNSIGNED,
+        allowNull: false,
+        defaultValue: 0,
+        comment: '是否选择用户',
+      },
       index: {
         type: Sequelize.INTEGER.UNSIGNED,
         allowNull: false,

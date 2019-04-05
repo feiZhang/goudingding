@@ -142,23 +142,24 @@ module.exports = (config) => {
           // 减少当前处理人
           if (gotoNext) {
             const xiayige = await mShenpiBuzhou.findOne({
-              where: { shenpiId: req.params.shenpiId, id: { $lt: req.params.id } },
-              order: [['id', 'desc']],
+              where: { shenpiId: req.params.shenpiId, index: { $gt: currentStep.index } },
+              order: [['index', 'asc']],
             });
             if (xiayige) {
               xiayige.zhuangtai = '待办';
               mainData.zhuangtai = '办理中';
               // 如果下一步是多人，前端可以选择下一步处理人。这是选定的下一步处理人
               if (Array.isArray(req.params.nextUserIds)) {
+                const tNextUserIds = req.params.nextUserIds.map(one => one.userId.toString());
                 mainData.allUserIds = `,${getAllUserIds({
                   curV: mainData.allUserIds.split(','),
                   oldV: xiayige.toUserIds.split(','),
-                  newV: req.params.nextUserIds,
+                  newV: tNextUserIds,
                 })
                   .filter(one => one !== '')
                   .join(',')},`;
-                xiayige.toUserIds = `,${req.params.nextUserIds.join(',')},`;
-                await mShenpiMingxi.update({ isDelete: 1 }, { where: { index: xiayige.index, userId: { $notIn: req.params.nextUserIds } } });
+                xiayige.toUserIds = `,${tNextUserIds.join(',')},`;
+                await mShenpiMingxi.update({ isDelete: 1 }, { where: { index: xiayige.index, userId: { $notIn: tNextUserIds } } });
               }
               // 如果传递了下一步的人员，上面已经格式化过了。
               // 这个字段作废掉
@@ -297,7 +298,8 @@ module.exports = (config) => {
       const UserM = model('user');
       const DeptM = model('dept');
       let allUserIds = [];
-      // let nextToUsers = JSON.stringify([]);
+      let nextToUsers = JSON.stringify([]);
+      let nextSelectUser = 0;
       const shenpiLiucheng = [];
       shenpiConfig[req.params.shenpiType].liucheng.forEach(level => {
         level.liucheng.forEach(one => {
@@ -322,7 +324,9 @@ module.exports = (config) => {
           if (tt.zhanghao.role instanceof Function) {
             tt.zhanghao.role = { id: tt.zhanghao.role({ data: req.params, user: req.user, liucheng: shenpiLiucheng, index: ii }) };
           }
+          console.log(tt, tt.zhanghao.role.id, 'check', req.user.role_id, req.user.role_id.indexOf(94));
           if (tt.zhanghao.role.id === false) {
+            // 有些步骤根据情况，可以跳过。
             // eslint-disable-next-line no-continue
             continue;
           }
@@ -344,7 +348,9 @@ module.exports = (config) => {
             userList = await UserM.findAll({ where: userWhere, include, limit: 50 });
             // console.log(userList.length);
           }
-          // 为了在前端摆放的合适的格子里，需要角色数据
+          // 为了在前端摆放的合适的格子里，需要角色数据，
+          // 遍历这个角色数据，是为了说明此用户是以那个角色被选中的，一个用户可以以多个角色参与流程审批。
+          // 但是审批意见要填在对应的角色中。
           // eslint-disable-next-line no-loop-func
           tt.zhanghao.role.id.forEach(roleId => {
             const roleUserList = userList.filter(one => one.roleId.indexOf(`,${roleId},`) >= 0);
@@ -382,28 +388,32 @@ module.exports = (config) => {
         // req.params.toUserNames = JSON.stringify(toUserNames);
         }
         buzhous.push(
-        Object.assign(
-          {
-            shenpiContent: tt.neirong,
-            shenpiDept: tt.bumen,
-            zhuangtai: '经办',
-            shenpiType: tt.shenpiType || '单批',
-            index,
-            toUserIds: `,${toUserIds.join(',')},`,
-            initToUserIds: `,${toUserIds.join(',')},`,
-            // toUserNames: JSON.stringify(toUserNames),
-            // initToUserNames: JSON.stringify(toUserNames),
-            // nextToUsers,
-          },
-          otherInfo
-        )
-      );
-      // nextToUsers = JSON.stringify(toUserNames);
+          Object.assign(
+            {
+              shenpiContent: tt.neirong,
+              shenpiDept: tt.bumen,
+              selectUser: nextSelectUser,
+              zhuangtai: '经办',
+              shenpiType: tt.shenpiType || '单批',
+              index,
+              toUserIds: `,${toUserIds.join(',')},`,
+              initToUserIds: `,${toUserIds.join(',')},`,
+              // toUserNames: JSON.stringify(toUserNames),
+              // initToUserNames: JSON.stringify(toUserNames),
+              nextToUsers,
+            },
+            otherInfo
+          )
+        );
+        nextToUsers = JSON.stringify(toUserNames);
+        nextSelectUser = tt.selectUser || 0;
       }
       req.params.allUserIds = `,${allUserIds.join(',')},`;
       // console.log(buzhous);
+      // 用户生成步骤和明细的数组。
       req.buzhous = buzhous;
-      req.toUserNames = allUserNames;
+      const formatMingxi = shenpiConfig[req.params.shenpiType].formatMingxi;
+      req.toUserNames = formatMingxi ? formatMingxi(allUserNames) : allUserNames;
       next();
     },
     // fillOtherInfo,
