@@ -312,7 +312,10 @@ module.exports = (config) => {
       for (let ii = shenpiLiucheng.length - 1; ii >= 0; ii -= 1) {
         const toUserNames = [];
         let otherInfo = {};
-        const tt = shenpiLiucheng[ii];
+        // 不进行复制的话，下面的 tt.zhanghao.role 在设置的时候，会直接更新原始变量
+        // 导致 tt.zhanghao.role instanceof Function  不起作用。
+        // 在control中，不在具体方法中的头部信息，应该是只执行一次。导致config信息是全生命周期变量注入。
+        const tt = _.cloneDeep(shenpiLiucheng[ii]);
         const userWhere = {};
         const index = ii + 1;
         let userList = [];
@@ -324,7 +327,7 @@ module.exports = (config) => {
           if (tt.zhanghao.role instanceof Function) {
             tt.zhanghao.role = { id: tt.zhanghao.role({ data: req.params, user: req.user, liucheng: shenpiLiucheng, index: ii }) };
           }
-          console.log(tt, tt.zhanghao.role.id, 'check', req.user.role_id, req.user.role_id.indexOf(94));
+          console.log(tt, tt.zhanghao.role.id, 'check', req.user.dept_id, req.user.role_id, req.user.role_id.indexOf(94));
           if (tt.zhanghao.role.id === false) {
             // 有些步骤根据情况，可以跳过。
             // eslint-disable-next-line no-continue
