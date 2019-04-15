@@ -86,7 +86,7 @@ module.exports = ({ baseModel }) => {
       shenpiType: {
         type: Sequelize.ENUM('单批', '多批'),
         allowNull: false,
-        defaultValue: 2,
+        defaultValue: '单批',
         comment: '单批',
       },
       autoNext: {

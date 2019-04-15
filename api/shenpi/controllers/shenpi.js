@@ -125,6 +125,7 @@ module.exports = (config) => {
           let gotoNext = true;
           currentStep.toUserNames.map(one => {
             // 一个人会有多个角色，前端要传递参数，此次审批的是哪个角色
+            // console.log(one.get(), req.user.id, req.params.roleId, currentStep.shenpiType);
             if ((one.userId === req.user.id && one.roleId === req.params.roleId) || currentStep.shenpiType === '单批') {
               if (one.userId === req.user.id && one.roleId === req.params.roleId) {
                 one.banliyijian = req.params.banliyijian;
@@ -259,7 +260,7 @@ module.exports = (config) => {
               mShenpi.update(
                 {
                   searchString: JSON.stringify(_.omit(req.hooks.mShenpi.get(), ['fujian', 'createdAt', 'updatedAt'])),
-                  shenpiTitle: gdInfo.gaishu(),
+                  shenpiTitle: gdInfo.gaishu ? gdInfo.gaishu() : '',
                 },
                 { where: { id: req.params.id } }
               );
@@ -338,7 +339,8 @@ module.exports = (config) => {
               $or: tt.zhanghao.role.id.map(ttt => ({ $like: `%,${ttt},%` })),
             };
           }
-          UserM.belongsTo(DeptM, { foreignKey: 'dept_id', sourceKey: 'id', as: 'userdept', scope: { isDelete: 'no' } });
+          // 在代码里面配置，这里就不需要了。也不用写dept_id了。
+          // UserM.belongsTo(DeptM, { foreignKey: 'dept_id', sourceKey: 'id', as: 'userdept', scope: { isDelete: 'no' } });
           if (tt.cengji > 0) {
             // 地市级的数据，需要选址选择范围，否则能找到其他地市的人员
             const fdns = (req.user.deptFdn || req.user.dept_fdn || '').split('.');
@@ -441,7 +443,7 @@ module.exports = (config) => {
           }
           req.hooks.mShenpi.update({
             searchString: JSON.stringify(_.omit(req.hooks.neirong.get(), ['fujian', 'createdAt', 'updatedAt'])),
-            shenpiTitle: req.hooks.neirong.gaishu(),
+            shenpiTitle: req.hooks.neirong.gaishu ? req.hooks.neirong.gaishu() : '',
           });
           const buzhous = req.buzhous.map(rr => {
             rr.shenpiId = req.hooks.mShenpi.id;

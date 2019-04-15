@@ -20,6 +20,18 @@ module.exports = ({ baseModel, name, config, U, shenpiConfig }) => ({
   },
 });
 /*
+1. 表关系
+  models.zhongduanCaigouShenpi.hasMany(models.tagsData, {
+    foreignKey: 'dataId',
+    sourceKey: 'id',
+    as: 'tagsData',
+  });
+  models.zhongduanCaigouShenpi.hasMany(models.tagsData, {
+    foreignKey: 'dataId',
+    sourceKey: 'id',
+    as: 'innerTagsData',
+  });
+2. 流程配置
       hetong: {
         formatMingxi: () =>{
 
