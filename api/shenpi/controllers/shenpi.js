@@ -26,7 +26,8 @@ module.exports = (config) => {
       // 代办的
       if (req.params.sendToMy) {
         if (req.params.isHistory) {
-          // 允许省公司人员或劳务订单查看人员	参看本部门相关的订单。
+          // 允许省公司人员或劳务订单查看人员	查看本部门相关的订单。
+          // 如果使用配置得readOnly将查看人员加入allUser，会导致，后面添加的查看人员，无法查看角色分配之前的数据。
           if (req.viewShenpi !== true) {
             req.params.allUserIds_like = `%,${req.user.id},%`;
           }
@@ -111,7 +112,7 @@ module.exports = (config) => {
             order: [['id', 'desc']],
           });
           mainData.currentUserIds = qianyige.toUserIds;
-          // 对第一步再驳回，进入修改状态。
+          // 驳回直接进入修改状态。
           mainData.zhuangtai = '未提交';
           // 返回给第一人，发起人
           smsUserIds = qianyige.toUserIds.split(',');
@@ -275,11 +276,11 @@ module.exports = (config) => {
 
   const add = [
     async (req, res, next) => {
-      req.params.creatorCityName = req.user.cityDept.name;
+      req.params.creatorCityName = (req.user.cityDept || {}).name || '';
       req.mShenpiNeirong = model(`${name}Neirong_${(req.params.shenpiType || '').toLowerCase()}`);
       console.log(`${name}Neirong_${(req.params.shenpiType || '').toLowerCase()}`, req.mShenpiNeirong);
       // eslint-disable-next-line no-constant-condition
-      if (false && !req.user.shenpi[name]) {
+      if (req.user.shenpi != undefined && !req.user.shenpi['all'] && !req.user.shenpi[name] && !req.user.shenpi[`${name}_${(req.params.shenpiType || '').toLowerCase()}`]) {
         next(error('你没有这个权限!'));
         return;
       }
@@ -307,6 +308,7 @@ module.exports = (config) => {
           shenpiLiucheng.push({ ...one, cengji: level.cengji });
         });
       });
+      req.params.neirongType = shenpiConfig[req.params.shenpiType].neirongType || '单条内容';
       // console.log(JSON.stringify(shenpiConfig),allUserIds, 'shenpiLiucheng');
       // 为了方便生成nextToUser倒序来
       let allUserNames = [];
@@ -434,39 +436,65 @@ module.exports = (config) => {
           return;
         }
         req.params.shenpiId = req.hooks.mShenpi.id;
-      // req.params.title = `中移建设有限公司河南分公司${(req.user.cityDept || {}).name || ''}分公司工劳务外包审批`;
-        const bb = helper.rest.add(req.mShenpiNeirong, null, 'neirong');
-        bb(req, res, err => {
-          if (err) {
-            next(err);
-            return;
-          }
-          req.hooks.mShenpi.update({
-            searchString: JSON.stringify(_.omit(req.hooks.neirong.get(), ['fujian', 'createdAt', 'updatedAt'])),
-            shenpiTitle: req.hooks.neirong.gaishu ? req.hooks.neirong.gaishu() : '',
-          });
-          const buzhous = req.buzhous.map(rr => {
-            rr.shenpiId = req.hooks.mShenpi.id;
-            return rr;
-          });
-          mShenpiBuzhou
-          .bulkCreate(buzhous)
-          .then(() => {
-            const toUsers = req.toUserNames.map(rr => ({ ...rr, shenpiId: req.hooks.mShenpi.id }));
-            mShenpiMingxi.bulkCreate(toUsers);
-            res.send(req.hooks.mShenpi);
+        if (req.hooks.mShenpi.neirongType === '多条内容') {
+          req.mShenpiNeirong.update({ shenpiId: req.params.shenpiId }, { where: { creatorId: req.user.id, shenpiId: 0 } });
+          next();
+        } else {
+          // 单内容审批
+          const bb = helper.rest.add(req.mShenpiNeirong, null, 'neirong');
+          bb(req, res, err => {
+            if (err) {
+              next(err);
+              return;
+            }
+            req.hooks.mShenpi.update({
+              searchString: JSON.stringify(_.omit(req.hooks.neirong.get(), ['fujian', 'createdAt', 'updatedAt'])),
+              shenpiTitle: req.hooks.neirong.gaishu ? req.hooks.neirong.gaishu() : '',
+            });
             next();
           });
-        });
+        }
       });
     },
+    (req, res, next) => {
+      const buzhous = req.buzhous.map(rr => {
+        rr.shenpiId = req.params.shenpiId;
+        return rr;
+      });
+      mShenpiBuzhou
+      .bulkCreate(buzhous)
+      .then(() => {
+        const toUsers = req.toUserNames.map(rr => ({ ...rr, shenpiId: req.hooks.mShenpi.id }));
+        mShenpiMingxi.bulkCreate(toUsers);
+        res.send(req.hooks.mShenpi);
+        next();
+      });
+    }
   // helper.checker.sysAdmin(),
   ];
 
   const detail = [
-    helper.getter(mShenpi, 'modelName'),
-    helper.assert.exists('hooks.modelName'),
-    (req, res, next) => {
+    async (req, res, next) => {
+      if (req.params.id === 0 && req.params.shenpiType) {
+        //多条数据的新增
+        req.mShenpiNeirong = model(`${name}Neirong_${req.params.shenpiType.toLowerCase()}`);
+        const neirongList = await req.mShenpiNeirong.findAll({ where: { creatorId: req.user.id, shenpiId: 0 } });
+        res.send({ neirongList, id: 0 });
+        return next();
+      }
+      const aa = helper.getter(mShenpi, 'modelName');
+      aa(req, res, (error) => {
+        if (error) next(error)
+        else {
+          const bb = helper.assert.exists('hooks.modelName');
+          bb(req, res, next);
+        }
+      })
+    },
+    async (req, res, next) => {
+      if (req.params.id === 0) {
+        return next();
+      }
       if (!req.viewShenpi && req.hooks.modelName.allUserIds.indexOf(`,${req.user.id},`) < 0) {
         next(error('请求的数据不存在或您没权限处理!'));
         return;
@@ -474,17 +502,18 @@ module.exports = (config) => {
 
       const item = req.hooks.modelName.get();
       req.mShenpiNeirong = model(`${name}Neirong_${item.shenpiType.toLowerCase()}`);
-      req.mShenpiNeirong.findOne({ where: { shenpiId: item.id } })
-      .then(neirongInfo => {
-        mShenpiBuzhou.findAll({ where: { shenpiId: item.id }, order: [['id', 'desc']] }).then(results => {
-          mShenpiMingxi.findAll({ where: { shenpiId: item.id, isDelete: 0 } }).then(toUserNames => {
-            item.historyList = results.map(rr => ({ ...rr.get(), toUserNames: toUserNames.filter(one => one.index === rr.index) }));
-            res.send(Object.assign({}, item, neirongInfo.get(), { id: item.id }));
-            next();
-          });
+      // 有可能是多数据,多条数据编辑时用此不能实时获取。 await req.mShenpiNeirong.findAll({ where: { shenpiId: item.id } })
+      const neirongList = item.neirongType === '多条内容' ? [] : req.mShenpiNeirong.findOne({ where: { shenpiId: item.id } });
+      mShenpiBuzhou.findAll({ where: { shenpiId: item.id }, order: [['id', 'desc']] }).then(results => {
+        mShenpiMingxi.findAll({ where: { shenpiId: item.id, isDelete: 0 } }).then(toUserNames => {
+          item.historyList = results.map(rr => ({ ...rr.get(), toUserNames: toUserNames.filter(one => one.index === rr.index) }));
+          if (item.neirongType === '多条内容') {
+            res.send(Object.assign({}, item, { neirongList }, { id: item.id }));
+          } else {
+            res.send(Object.assign({}, item, neirongList.get(), { id: item.id }));
+          }
+          next();
         });
-        // mShenpi.update({ zhuangtai: '已读' }, { where: { zhuangtai: '未读', id: item.id } }).then(() => {
-        // });
       });
     },
   ];

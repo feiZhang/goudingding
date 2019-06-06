@@ -214,41 +214,44 @@ module.exports = ({ U, config: { service, upload } }) => {
     },
 
     beforeUpdateFdn(model, options) {
+      // 注意，此功能会在afterCreate后触发。此时数据还没有fdn值。
+      if (!model.previous('fdn') || model.previous('fdn') == '') return;
+
       const changed = model.changed();
       // console.log("before_update_fdn",model,77,options,88,fn,"99",changed);
       if (changed) {
         const tableSetStr = [];
         let newFdn = '';
-        if (changed.indexOf('fdn_id') > -1 && model.previous('fdn_id') !== 0) {
-          newFdn = `${model.parent_fdn + model.fdn_id}.`;
-          tableSetStr.push('parent_fdn=CONCAT(:parentFdn,SUBSTRING(fdn,:len))');
+        if (changed.indexOf('fdnId') > -1 && model.previous('fdnId') != 0) {
+          newFdn = `${model.parentFdn}${model.fdnId}.`;
+          tableSetStr.push('parentFdn=CONCAT(:parentFdn,SUBSTRING(fdn,:len))');
           tableSetStr.push('fdn = CONCAT(:parentFdn,SUBSTRING(fdn,:len))');
           // 必须有这一样，才会更新此字段，否则会被忽略
           options.fields.push('fdn');
           model.fdn = newFdn;
         }
         let newFullName = '';
-        if (changed.indexOf('name') > -1 && _.keys(model.rawAttributes).indexOf('full_name') >= 0) {
+        if (changed.indexOf('name') > -1 && U._.keys(model.rawAttributes).indexOf('fullName') >= 0) {
           newFullName =
-            model.parent_full_name === undefined || model.parent_full_name === 0 || model.parent_full_name === ''
+            model.parentFullName === undefined || model.parentFullName === 0 || model.parentFullName === ''
               ? model.name
-              : `${model.parent_full_name}-${model.name}`;
-          tableSetStr.push('parent_full_name=CONCAT(:parentFullName,SUBSTRING(parent_full_name,:nameLen))');
-          tableSetStr.push('full_name = CONCAT(:parentFullName,SUBSTRING(full_name,:nameLen))');
+              : `${model.parentFullName}-${model.name}`;
+          tableSetStr.push('parentFullName=CONCAT(:parentFullName,SUBSTRING(parentFullName,:nameLen))');
+          tableSetStr.push('fullName = CONCAT(:parentFullName,SUBSTRING(fullName,:nameLen))');
 
-          options.fields.push('full_name');
-          model.setDataValue('full_name', newFullName);
+          options.fields.push('fullName');
+          model.setDataValue('fullName', newFullName);
         }
         if (tableSetStr.length > 0) {
-          console.log(`UPDATE ${(model._modelOptions || model.$modelOptions).name.singular} SET ${tableSetStr.join(',')}  WHERE fdn LIKE :oldFdn AND id!=:id`);
-          model.sequelize.query(`UPDATE ${(model._modelOptions || model.$modelOptions).name.singular} SET ${tableSetStr.join(',')}  WHERE fdn LIKE :oldFdn AND id!=:id`, {
+          // console.log(model.fullName, model.previous('fullName'), `UPDATE ${model._modelOptions.name.singular} SET ${tableSetStr.join(',')}  WHERE fdn LIKE :oldFdn AND id!=:id`);
+          model.sequelize.query(`UPDATE ${model._modelOptions.name.singular} SET ${tableSetStr.join(',')}  WHERE fdn LIKE :oldFdn AND id!=:id`, {
             replacements: {
               id: model.id,
               parentFdn: newFdn,
               parentFullName: newFullName,
-              nameLen: model.full_name.length + 1,
-              len: model.fdn.length + 1,
-              oldFdn: `${model.fdn}%`,
+              nameLen: model.previous('fullName').length + 1,
+              len: model.previous('fdn').length + 1,
+              oldFdn: `${model.previous('fdn')}%`,
             },
             type: Sequelize.QueryTypes.UPDATE,
           });
@@ -258,17 +261,17 @@ module.exports = ({ U, config: { service, upload } }) => {
 
     afterCreateFdn(model) {
       // console.log(111,model.rawAttributes)
-      model.fdn_id = model.id;
-      const qianzhui = '0000000'.substr(0, 5 - model.fdn_id.toString().length);
-      model.fdn = `${model.parent_fdn + qianzhui + model.fdn_id.toString()}.`;
-      model.fdn_level = model.fdn.split('.').length - 1;
-      if (_.keys(model.rawAttributes).indexOf('full_name') >= 0) {
+      model.fdnId = model.id;
+      const qianzhui = '0000000'.substr(0, 5 - model.fdnId.toString().length);
+      model.fdn = `${model.parentFdn}${qianzhui}${model.fdnId.toString()}.`;
+      model.fdnLevel = model.fdn.split('.').length - 1;
+      if (_.keys(model.rawAttributes).indexOf('fullName') >= 0) {
         // options.fields.push("full_name");
         // console.log(model.parent_full_name,model.parent_full_name==undefined,model.parent_full_name==0,model.parent_full_name=='');
-        model.full_name =
-          model.parent_full_name === undefined || model.parent_full_name === 0 || model.parent_full_name === ''
+        model.fullName =
+          model.parentFullName === undefined || model.parentFullName === 0 || model.parentFullName === ''
             ? model.name
-            : `${model.parent_full_name}-${model.name}`;
+            : `${model.parentFullName}-${model.name}`;
       }
       const changed = model.changed();
       if (changed) {
@@ -298,7 +301,7 @@ module.exports = ({ U, config: { service, upload } }) => {
       if (uploadFields && Array.isArray(uploadFields) && uploadFields.length > 0) {
         uploadFields.forEach(item => {
           if (model[item] && model[item] !== '') {
-            const newFiles = _.isString(model[item]) ? JSON.parse(model[item]) : model.item;
+            const newFiles = _.isString(model[item]) ? JSON.parse(model[item]) : model[item];
             newFiles.forEach(nF => {
               exec(`mv ${upload.dir}${nF.path}/${nF.uid} ${upload.deleteDir}/`);
             });
