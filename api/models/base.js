@@ -7,8 +7,6 @@ const moment = require('moment');
 const fs = require('fs');
 const { exec } = require('child_process');
 
-const Op = Sequelize.Op;
-
 module.exports = ({ U, config: { service, upload } }) => {
   const formatDbField = (model, fieldName, type, defaultVal = []) => {
     let tValue = model.getDataValue(fieldName);
@@ -369,8 +367,25 @@ module.exports = ({ U, config: { service, upload } }) => {
       }
     },
 
+    async checkShujuGuanlian(model) {
+      const shanchuGuanlian = (model._modelOptions || model.$modelOptions).shanchuGuanlian;
+      // console.log('checkShujuGuanlian', shanchuGuanlian);
+      if (shanchuGuanlian) {
+        for (let one of shanchuGuanlian) {
+          const where = one.where || {};
+          U._.each(one.fields || {}, (two, key) => {
+            where[key] = model[two];
+          })
+          const have = await U.model(one.modelName).findAll({ where });
+          if (have) {
+            return model.sequelize.Promise.reject(new Error(typeof one.message === 'function' ? one.message(one, have) : `${one.message}!`));
+          }
+        }
+      }
+    },
+
     async checkUnique(model) {
-      // console.log(model,model.ins)
+      const Op = (U.rest.Sequelize || {}).Op;
       const changed = model.changed();
       if (!changed) return true;
       const checkUnique = (model._modelOptions || model.$modelOptions).checkUnique;
@@ -406,6 +421,7 @@ module.exports = ({ U, config: { service, upload } }) => {
     },
 
     createNo(model, options) {
+      const Op = (U.rest.Sequelize || {}).Op;
       const type = { 1: '01', 2: '02' };
       const benYue = type[model.type.toString()] + moment().format('YYYYMM');
       model.constructor.max({ where: { no: { [Op.like]: `${benYue}%` } } }).then(max => {
