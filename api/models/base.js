@@ -412,7 +412,7 @@ module.exports = ({ U, config: { service, upload } }) => {
             where[key] = model[two];
           })
           const have = await U.model(one.modelName).findAll({ where });
-          if (have) {
+          if (have && have.length > 0) {
             return model.sequelize.Promise.reject(new Error(typeof one.message === 'function' ? one.message(one, have) : `${one.message}!`));
           }
         }
