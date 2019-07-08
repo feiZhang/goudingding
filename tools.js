@@ -247,7 +247,7 @@ module.exports = (Modal) => ({
   /**
    * 将list设置为table需要的rowSpan格式
    */
-  listRowSpan2(faContentList, keys = []) {
+  listRowSpan(faContentList, keys = []) {
     const tFaContentList = [];
     const rowSpan = {};
     const shangyiRowSpan = {};
@@ -275,40 +275,6 @@ module.exports = (Modal) => ({
       keys.map(ii => {
         tFaContentList[tFaContentList.length - 1 - rowSpan[ii]][`${ii}Rows`].props.rowSpan = rowSpan[ii] + 1;
       });
-    }
-    return tFaContentList;
-  },
-  // 移除
-  listRowSpan(faContentList, layerNum = 0) {
-    const tFaContentList = [];
-    const rowSpan = {};
-    const shangyiRowSpan = {};
-    for (let ii = 1; ii <= layerNum; ii += 1) {
-      rowSpan[ii] = -1;
-      shangyiRowSpan[ii] = '';
-    }
-    faContentList.map((item, key) => {
-      for (let ii = 1; ii <= layerNum; ii += 1) {
-        item[`typeRow${ii}`] = { children: item[`type${ii}`], props: { rowSpan: 0 } };
-        // console.log(item,ii,112233);
-      }
-      tFaContentList.push(item);
-      // console.log(tFaContentList,key);
-
-      for (let ii = 1; ii <= layerNum; ii += 1) {
-        rowSpan[ii] += 1;
-        if (shangyiRowSpan[ii] != item[`type${ii}`] && shangyiRowSpan[ii] != '') {
-          // console.log(11, key, sort2Index);
-          tFaContentList[key - rowSpan[ii]][`typeRow${ii}`].props.rowSpan = rowSpan[ii];
-          rowSpan[ii] = 0;
-        }
-        shangyiRowSpan[ii] = item[`type${ii}`];
-      }
-    });
-    if (tFaContentList.length > 0) {
-      for (let ii = 1; ii <= layerNum; ii += 1) {
-        tFaContentList[tFaContentList.length - 1 - rowSpan[ii]][`typeRow${ii}`].props.rowSpan = rowSpan[ii] + 1;
-      }
     }
     return tFaContentList;
   },

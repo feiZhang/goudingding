@@ -12,59 +12,89 @@ module.exports = ({ U, config: { service, upload } }) => {
     let tValue = model.getDataValue(fieldName);
     if (tValue === undefined) return undefined;
     switch (type) {
-    case 'json':
-      tValue = !tValue || _.trim(tValue) === '' ? defaultVal : _.isString(tValue) ? JSON.parse(tValue) : tValue;
-      break;
-    case 'month':
-      tValue = tValue ? moment(tValue).format('YYYY-MM') : '';
-      break;
-    case 'date':
-      tValue = tValue ? moment(tValue).format('YYYY-MM-DD') : '';
-      break;
-    case 'date-month':
-      tValue = tValue ? moment(tValue).format('YYYY-MM') : '';
-      break;
-    case 'date-year':
-      tValue = tValue ? moment(tValue).format('YYYY') : '';
-      break;
-    case 'datetime':
-      tValue = tValue ? moment(tValue).format('YYYY-MM-DD HH:mm:ss') : '';
-      break;
-    case 'files': {
-      const list = tValue ? JSON.parse(tValue) : [];
-      // console.log("formatDbField1", fieldName, tValue);
-      // list = list.map(item => {
-      //   if (!item.path) {
-      //     //在这里进行path设置，会在数据creater之前，进行path设定，从而让 saveUploadFile 函数在afterCreate中执行，保证获取到数据的id
-      //     //数据保存是，从临时上传目录copy文件到实际存放的目标目录
-      //     const monthPath = moment().format("YYYYMM");
-      //     const dayPath = monthPath + "/" + moment().format("DD");
-      //     if (!U.fs.existsSync(config.upload.dir + "/" + monthPath)) U.fs.mkdir(config.upload.dir + "/" + monthPath);
-      //     if (!U.fs.existsSync(config.upload.dir + "/" + dayPath)) U.fs.mkdir(config.upload.dir + "/" + dayPath);
-      //     item.path = "/" + dayPath;
-      //   }
-      //   return item;
-      // });
-      // tValue = JSON.stringify(list);
-      // model[fieldName] = tValue;
-      let key = '';
-      const keyFile = `${upload.dir}/photo.txt`;
-      if (fs.existsSync(keyFile)) {
-        key = fs.readFileSync(keyFile);
+      case 'json':
+        tValue = !tValue || _.trim(tValue) === '' ? defaultVal : _.isString(tValue) ? JSON.parse(tValue) : tValue;
+        break;
+      case 'month':
+        tValue = tValue ? moment(tValue).format('YYYY-MM') : '';
+        break;
+      case 'date':
+        tValue = tValue ? moment(tValue).format('YYYY-MM-DD') : '';
+        break;
+      case 'date-month':
+        tValue = tValue ? moment(tValue).format('YYYY-MM') : '';
+        break;
+      case 'date-year':
+        tValue = tValue ? moment(tValue).format('YYYY') : '';
+        break;
+      case 'datetime':
+        tValue = tValue ? moment(tValue).format('YYYY-MM-DD HH:mm:ss') : '';
+        break;
+      case 'files': {
+        const list = tValue ? JSON.parse(tValue) : [];
+        // console.log("formatDbField1", fieldName, tValue);
+        // list = list.map(item => {
+        //   if (!item.path) {
+        //     //在这里进行path设置，会在数据creater之前，进行path设定，从而让 saveUploadFile 函数在afterCreate中执行，保证获取到数据的id
+        //     //数据保存是，从临时上传目录copy文件到实际存放的目标目录
+        //     const monthPath = moment().format("YYYYMM");
+        //     const dayPath = monthPath + "/" + moment().format("DD");
+        //     if (!U.fs.existsSync(config.upload.dir + "/" + monthPath)) U.fs.mkdir(config.upload.dir + "/" + monthPath);
+        //     if (!U.fs.existsSync(config.upload.dir + "/" + dayPath)) U.fs.mkdir(config.upload.dir + "/" + dayPath);
+        //     item.path = "/" + dayPath;
+        //   }
+        //   return item;
+        // });
+        // tValue = JSON.stringify(list);
+        // model[fieldName] = tValue;
+        let key = '';
+        const keyFile = `${upload.dir}/photo.txt`;
+        if (fs.existsSync(keyFile)) {
+          key = fs.readFileSync(keyFile);
+        }
+        const formatFile = (fileList) => {
+          return fileList.map(item => {
+            if (item && item.uid && item.path) {
+              item.url = item && item.uid ? `${upload.accessUrl}?notgzip=1&f=${item.path || ''}/${item.uid}&n=${item.name}&key=${key}` : '';
+            }
+            if (Array.isArray(item.children) && item.children.length > 0) {
+              item.children = formatFile(item.children);
+            }
+            return item;
+          });
+        }
+        tValue = formatFile(list);
+        // console.log(tValue, list,18989)
+        // tValue = JSON.stringify(list);
+        // console.log("formatDbField", fieldName, tValue);
+        break;
       }
-      tValue = list.map(item => {
-        item.url = item && item.uid ? `${upload.accessUrl}?notgzip=1&f=${item.path || ''}/${item.uid}&n=${item.name}&key=${key}` : '';
-        return item;
-      });
-      // tValue = JSON.stringify(list);
-      // console.log("formatDbField", fieldName, tValue);
-      break;
-    }
-    default:
-      break;
+      default:
+        break;
     }
     return tValue;
   };
+
+  const delFileTo = (fileList, haveUids) => {
+    fileList.forEach(oldFile => {
+      // console.log(uids, oldFile);
+      if (oldFile.uid && oldFile.uid !== '' && (haveUids === 'all' || haveUids.indexOf(oldFile.uid) < 0)) {
+        try {
+          // console.log('rm ' + config.upload.dir + "/" + oldFile.uid);
+          console.log(`mv ${upload.dir}${oldFile.path}/${oldFile.uid} ${upload.deleteDir}/`);
+          exec(`mv ${upload.dir}${oldFile.path}/${oldFile.uid} ${upload.deleteDir}/`);
+          // U.model('uploadFile').destroy({ where: { uid: oldFile.uid } });
+          // child_process.exec('rm ' + config.upload.dir + "/" + oldFile.uid);
+          // U.fs.unlink(config.upload.dir + "/" + oldFile.uid);  //文件不存在时出错
+        } catch (e) {
+          console.log(e);
+        }
+      }
+      if (Array.isArray(oldFile.children) && oldFile.children.length > 0) {
+        delFileTo(oldFile.children, haveUids);
+      }
+    });
+  }
   return {
     baseAttr: {
       omitNull: false,
@@ -109,6 +139,11 @@ module.exports = ({ U, config: { service, upload } }) => {
         allowNull: false,
       },
       creatorId: {
+        type: Sequelize.INTEGER.UNSIGNED,
+        defaultValue: 0,
+        allowNull: false,
+      },
+      creatorDeptId: {
         type: Sequelize.INTEGER.UNSIGNED,
         defaultValue: 0,
         allowNull: false,
@@ -300,9 +335,10 @@ module.exports = ({ U, config: { service, upload } }) => {
         uploadFields.forEach(item => {
           if (model[item] && model[item] !== '') {
             const newFiles = _.isString(model[item]) ? JSON.parse(model[item]) : model[item];
-            newFiles.forEach(nF => {
-              exec(`mv ${upload.dir}${nF.path}/${nF.uid} ${upload.deleteDir}/`);
-            });
+            delFileTo(newFiles, 'all');
+            // newFiles.forEach(nF => {
+            //   exec(`mv ${upload.dir}${nF.path}/${nF.uid} ${upload.deleteDir}/`);
+            // });
           }
         });
       }
@@ -310,6 +346,37 @@ module.exports = ({ U, config: { service, upload } }) => {
 
     saveUploadFile(model) {
       // console.log(model);
+      const mvFileTo = (fileList) => {
+        let uids = [];
+        // console.log(fileList,'ffff');
+        fileList.forEach(nF => {
+          if (nF.uid && nF.uid !== '') {
+            const tttName = nF.uid.split('.');
+            const tFile = `${service.bodyParser.uploadDir}/${tttName[0]}`;
+            if (fs.existsSync(tFile)) {
+              console.log(`mv ${tFile} ${upload.dir}${nF.path}/${nF.uid}`);
+              exec(`mv ${tFile} ${upload.dir}${nF.path}/${nF.uid}`);
+              U.model('uploadFile').update(
+                Object.assign(nF, {
+                  dataId: model.id,
+                  dataType: (model._modelOptions || model.$modelOptions).name.singular,
+                }),
+                { where: { uid: nF.uid } }
+              );
+              uids.push(nF.uid);
+            } else {
+              console.log(`no ${tFile} ${upload.dir}${nF.path}/${nF.uid}`);
+            }
+          }
+          if (Array.isArray(nF.children) && nF.children.length > 0) {
+            const tt2 = mvFileTo(nF.children);
+            // console.log(tt2,nF.children, 222);
+            uids = uids.concat(tt2);
+          }
+        });
+        return uids;
+      }
+
       const uploadFields = (model._modelOptions || model.$modelOptions).uploadFields;
       const changed = model.changed();
       if (changed) {
@@ -320,46 +387,14 @@ module.exports = ({ U, config: { service, upload } }) => {
               let newFiles = [];
               if (model[item] && model[item] !== '') {
                 newFiles = _.isString(model[item]) ? JSON.parse(model[item]) : model[item];
-                newFiles.map(nF => {
-                  if (nF.uid && nF.uid !== '') {
-                    const tttName = nF.uid.split('.');
-                    const tFile = `${service.bodyParser.uploadDir}/${tttName[0]}`;
-                    if (fs.existsSync(tFile)) {
-                      console.log(`mv ${tFile} ${upload.dir}${nF.path}/${nF.uid}`);
-                      exec(`mv ${tFile} ${upload.dir}${nF.path}/${nF.uid}`);
-                      U.model('uploadFile').update(
-                        Object.assign(nF, {
-                          dataId: model.id,
-                          dataType: (model._modelOptions || model.$modelOptions).name.singular,
-                        }),
-                        { where: { uid: nF.uid } }
-                      );
-                    } else {
-                      console.log(`no ${tFile} ${upload.dir}${nF.path}/${nF.uid}`);
-                    }
-                  }
-                  return nF;
-                });
+                mvFileTo(newFiles);
               }
               const uids = newFiles.map(nFile => nFile.uid);
               if (model.previous(item) && model.previous(item) !== '') {
                 // 删除旧的,不要的文件
-                (_.isString(model.previous(item)) ? JSON.parse(model.previous(item)) : model.previous(item)).forEach(oldFile => {
-                  // console.log(uids, oldFile);
-                  if (uids.indexOf(oldFile.uid) < 0) {
-                    try {
-                      // console.log('rm ' + config.upload.dir + "/" + oldFile.uid);
-                      console.log(`mv ${upload.dir}${oldFile.path}/${oldFile.uid} ${upload.deleteDir}/`);
-                      exec(`mv ${upload.dir}${oldFile.path}/${oldFile.uid} ${upload.deleteDir}/`);
-                      U.model('uploadFile').destroy({ where: { uid: oldFile.uid } });
-                      // child_process.exec('rm ' + config.upload.dir + "/" + oldFile.uid);
-                      // U.fs.unlink(config.upload.dir + "/" + oldFile.uid);  //文件不存在时出错
-                    } catch (e) {
-                      console.log(e);
-                    }
-                  }
-                });
+                const mvFileLists = (_.isString(model.previous(item)) ? JSON.parse(model.previous(item)) : model.previous(item));
                 // filePath = file.path.substr(service.bodyParser.uploadDir.length + 1);
+                delFileTo(mvFileLists, uids);
               }
             }
           });
