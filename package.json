@@ -30,7 +30,7 @@
   "dependencies": {
     "lodash": "^4.14.1",
     "moment": "^2.13.0",
-    "sequelize": "^3.33.0"
+    "sequelize": "^4.38.0"
   },
   "deprecated": false,
   "description": "个人的私有组件库",

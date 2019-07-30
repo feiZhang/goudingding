@@ -227,17 +227,17 @@ module.exports = ({ U, config: { service, upload } }) => {
       const resetFdn = (parentId, parentFdn, parentFullName) => {
         model
           .update({
-            parent_fdn: parentFdn,
+            parentFdn: parentFdn,
             fdn: Sequelize.fn('CONCAT', parentFdn, Sequelize.col('fdn_id'), fdnFenge),
-            parent_full_name: parentFullName,
-            full_name: Sequelize.fn('CONCAT', parentFullName, Sequelize.col('name'), fdnNameFenge),
+            parentFullName,
+            fullName: Sequelize.fn('CONCAT', parentFullName, Sequelize.col('name'), fdnNameFenge),
           },
-            { where: { parent_id: parentId } })
+            { where: { parentId: parentId } })
           .then(() => {
-            model.findAll({ where: { parent_id: parentId } }).then(results => {
+            model.findAll({ where: { parentId: parentId } }).then(results => {
               if (results) {
                 results.forEach(item => {
-                  resetFdn(item.id, item.fdn, item.full_name);
+                  resetFdn(item.id, item.fdn, item.fullName);
                 });
               }
             });
@@ -300,7 +300,7 @@ module.exports = ({ U, config: { service, upload } }) => {
       model.fdnLevel = model.fdn.split('.').length - 1;
       if (_.keys(model.rawAttributes).indexOf('fullName') >= 0) {
         // options.fields.push("full_name");
-        // console.log(model.parent_full_name,model.parent_full_name==undefined,model.parent_full_name==0,model.parent_full_name=='');
+        // console.log(model.parentFullName,model.parentFullName==undefined,model.parentFullName==0,model.parentFullName=='');
         model.fullName =
           model.parentFullName === undefined || model.parentFullName === 0 || model.parentFullName === ''
             ? model.name
@@ -413,7 +413,31 @@ module.exports = ({ U, config: { service, upload } }) => {
           })
           const have = await U.model(one.modelName).findAll({ where });
           if (have && have.length > 0) {
-            return model.sequelize.Promise.reject(new Error(typeof one.message === 'function' ? one.message(one, have) : `${one.message}!`));
+            return model.sequelize.Promise.reject(new Error(typeof one.message === 'function' ? await one.message(one, have) : `${one.message}!`));
+          }
+        }
+      }
+    },
+    async getGuanlianXinxi(model, options) {
+      const guanlianXinxi = (model._modelOptions || model.$modelOptions).guanlianXinxi;
+      // console.log('getGuanlianXinxi', guanlianXinxi);
+      if (guanlianXinxi) {
+        for (let one of guanlianXinxi) {
+          // console.log(one, 'one');
+          const where = one.where || {};
+          U._.each(one.fields || {}, (two, key) => {
+            where[key] = model[two];
+          })
+          const have = await U.model(one.modelName).findAll({ raw: true, where });
+          // console.log(have, have.length === 1, 'have', one.setFields);
+          if (have && have.length === 1) {
+            U._.each(one.setFields, (key, field) => {
+              // console.log(field, key, 'getGuanlianXinxi');
+              model[field] = have[0][key];
+              options.fields.push(field);
+            });
+          } else {
+            return model.sequelize.Promise.reject(new Error(typeof one.message === 'function' ? await one.message(one, have, model) : `${one.message}!`));
           }
         }
       }
