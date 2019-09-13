@@ -47,7 +47,7 @@ module.exports = (Modal) => ({
       }
       const r1 = Number(arg1.toString().replace('.', ''));
       const r2 = Number(arg2.toString().replace('.', ''));
-      return Numer(r2 == 0 ? 0 : (r1 / r2) * Math.pow(10, t2 - t1));
+      return Number(r2 == 0 ? 0 : (r1 / r2) * Math.pow(10, t2 - t1));
     }
     // 给Number类型增加一个div方法，调用起来更加方便。
     Number.prototype.div = function(arg) {
