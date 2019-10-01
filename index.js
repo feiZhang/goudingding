@@ -2,6 +2,7 @@
 /* eslint-disable max-len */
 const shenpi = require('./api/shenpi/index.js');
 const baseModel = require('./api/models/base');
+const baseController = require('./api/controllers/base');
 const tools = require('./tools.js');
 
 module.exports = ({ config, U }) => {
@@ -9,6 +10,9 @@ module.exports = ({ config, U }) => {
   return {
     tools,
     baseModel: theBaseModel,
+    baseController: ({ mainModel }) => {
+      return baseController({ mainModel, U, helper: U.rest.helper });
+    },
     shenpi: (shenpiConfig) => {
       // console.log(shenpiConfig);
       return shenpi({ baseModel: theBaseModel, U, config, ...shenpiConfig });

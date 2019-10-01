@@ -21,7 +21,7 @@
 const _ = require('lodash');
 const moment = require('moment');
 
-module.exports = (Modal) => ({
+module.exports = ({ Modal }) => ({
   _,
   getExcelColName(index) {
     return `${index > 25 ? String.fromCharCode(65 + parseInt(index / 26, 10) - 1) : ''}${String.fromCharCode(65 + (index % 26))}`
@@ -50,7 +50,7 @@ module.exports = (Modal) => ({
       return Number(r2 == 0 ? 0 : (r1 / r2) * Math.pow(10, t2 - t1));
     }
     // 给Number类型增加一个div方法，调用起来更加方便。
-    Number.prototype.div = function(arg) {
+    Number.prototype.div = function (arg) {
       return accDiv(this, arg);
     };
     // 乘法函数，用来得到精确的乘法结果
@@ -76,7 +76,7 @@ module.exports = (Modal) => ({
       return Number(((Number(s1.replace('.', '')) * Number(s2.replace('.', ''))) / Math.pow(10, m)).toFixed(m));
     }
     // 给Number类型增加一个mul方法，调用起来更加方便。
-    Number.prototype.mul = function(arg) {
+    Number.prototype.mul = function (arg) {
       return accMul(arg, this);
     };
     // 加法函数，用来得到精确的加法结果
@@ -102,7 +102,7 @@ module.exports = (Modal) => ({
       return Number(((arg1 * p + arg2 * p) / Math.pow(10, m)).toFixed(m));
     }
     // 给Number类型增加一个add方法，调用起来更加方便。
-    Number.prototype.add = function(arg) {
+    Number.prototype.add = function (arg) {
       return accAdd(arg, this);
     };
     // 减法函数
@@ -126,9 +126,10 @@ module.exports = (Modal) => ({
       return Number(((arg2 * m - arg1 * m) / m).toFixed(n));
     }
     // /给number类增加一个sub方法，调用起来更加方便
-    Number.prototype.sub = function(arg) {
+    Number.prototype.sub = function (arg) {
       return accSub(arg, this);
     };
+    return true;
   },
   editDataList: (dataList = [], data = {}, key = 'id') => {
     if (!Array.isArray(dataList) || !data || !data[key]) return [];
@@ -156,7 +157,7 @@ module.exports = (Modal) => ({
     iframe.style.display = 'none';
     // let token = Cookies.get('token')
     iframe.src = url;
-    iframe.onload = function() {
+    iframe.onload = function () {
       document.body.removeChild(iframe);
     };
     document.body.appendChild(iframe);
@@ -167,6 +168,7 @@ module.exports = (Modal) => ({
     }
     return undefined;
   },
+  date: () => moment().format('YYYY-MM-DD'),
   now: () => moment().format('YYYY-MM-DD HH:mm:ss'),
   randStr(_len = 32) {
     const dist = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -366,7 +368,7 @@ module.exports = (Modal) => ({
    */
   editCascaderValue(cascaderVals, selectVal, selectField = 'value', newValue = {}, isEdit = true) {
     console.log(cascaderVals, selectVal, selectField, newValue, isEdit);
-    const fn = function(cv) {
+    const fn = function (cv) {
       return cv.map(val => {
         if (isEdit && val[selectField] == selectVal) {
           val = { ...val, ...newValue };
@@ -391,7 +393,7 @@ module.exports = (Modal) => ({
    * @param {string} valueField  要获取的数据对应的字段名
    */
   getCascaderPath(cascaderVals, selectVal, selectField = 'value', valueField = 'value') {
-    const fn = function(cv) {
+    const fn = function (cv) {
       let rv = [];
       _.each(cv, val => {
         // console.log(val[selectField] == selectVal, val[selectField], "aa");
@@ -430,7 +432,7 @@ module.exports = (Modal) => ({
    * havRoot        是否需要父节点。比如：仓库（false:过滤出来没有省公司仓库，true:必定有）
    * */
   filterCascaderFromValues(cascaderVals, filterIds, havRoot = true) {
-    const fn = function(child) {
+    const fn = function (child) {
       let rv = [];
       _.each(child, val => {
         if (filterIds.indexOf(val.value) >= 0) {
@@ -606,80 +608,60 @@ module.exports = (Modal) => ({
    * fileType     导出的数据格式，excel、csv
    */
   // 新版本
-  exportExcelData({ fileName, data, dataCols, merge = [], style = {}, defaultWidth = '150', tableCols = [], fileType = 'excel' }) {
-    function getCols(tCols) {
-      let tList = [];
-      tCols.map(one => {
-        if (one.children) {
-          tList = tList.concat(getCols(one.children));
-        } else {
-          tList.push({ dataIndex: one.dataIndex || one.key, title: one.title });
-        }
-      })
-      return tList;
+  getListCols({ cols, type = 'list' }) {
+    let tList = [];
+    let tCols = cols;
+    if (type === 'list') {
+      tCols = cols.filter(one => !(one.key === 'operation' || one.noList == true || one.type === 'divider'))
     }
+    tCols.map(one => {
+      if (one.children) {
+        tList = tList.concat(this.getListCols({ cols: one.children, type }));
+      } else {
+        tList.push({ ...one, dataIndex: one.dataIndex || one.key });
+      }
+    })
+    return tList;
+  },
+  exportExcelData({ fileName, data, dataHeaders, dataCols, merge, style = {}, defaultWidth = "150", tableCols, fileType = "excel" }) {
     if (!dataCols && Array.isArray(tableCols) && tableCols.length > 0) {
-      dataCols = getCols(tableCols);
+      dataCols = this.getListCols({ cols: tableCols });
       const headerData = {};
       dataCols.forEach(one => {
         headerData[one.dataIndex] = one.title;
       })
+      // eslint-disable-next-line no-console
+      console.log(JSON.stringify(headerData));
       data.unshift(headerData);
     }
-    // if (!dataCols && tableCols) {
-    //   // 根据tableCols进行数据构造
-    //   dataCols = [];
-    //   const headerData1 = {};
-    //   const headerData2 = {};
-    //   let haveHeader2 = false;
-    //   tableCols.map(item => {
-    //     if (item.export !== false) {
-    //       if (item.children) {
-    //         haveHeader2 = true;
-    //         item.children.map(iii => {
-    //           headerData2[iii.dataIndex] = iii.exportTitle || iii.title;
-    //           dataCols.push({ dataIndex: iii.dataIndex });
-    //         });
-    //         headerData1[item.children[0].dataIndex] = item.title;
-    //       } else {
-    //         headerData1[item.dataIndex] = item.exportTitle || item.title;
-    //         dataCols.push({ ...item, dataIndex: item.dataIndex });
-    //       }
-    //     }
-    //   });
-    //   if (haveHeader2) data.unshift(headerData2);
-    //   data.unshift(headerData1);
-    // }
-    console.log(fileName, data, dataCols, merge, style, defaultWidth, tableCols, fileType);
+    if (dataHeaders) data = dataHeaders.concat(data);
 
-    const defaultStyle = {};
+    const defaultStyle = {}
     function datenum(v, date1904) {
       if (date1904) v += 1462;
-      const epoch = Date.parse(v);
+      var epoch = Date.parse(v);
       return (epoch - new Date(Date.UTC(1899, 11, 30))) / (24 * 60 * 60 * 1000);
     }
-    function sheetFromtArrayOftArrays(data, opts) {
-      const ws = {};
-      const range = opts || { s: { c: 10000000, r: 10000000 }, e: { c: 0, r: 0 } };
-      const cols = [];
-      _.each(dataCols, colsSet => {
-        cols.push({
-          wpx: colsSet.width && colsSet.width.indexOf('%') < 0 ? parseInt(colsSet.width) : defaultWidth,
-        });
-      });
-      for (let R = 0; R != data.length; R += 1) {
-        let C = -1;
-        _.each(dataCols, colsSet => {
-          C += 1;
+    function sheet_from_array_of_arrays(data, opts) {
+      let ws = {};
+      let range = opts || { s: { c: 10000000, r: 10000000 }, e: { c: 0, r: 0 } };
+      let cols = [];
+      _.each(dataCols, (colsSet) => {
+        cols.push({ wpx: (colsSet.width && colsSet.width.indexOf("%") < 0) ? parseInt(colsSet.width) : defaultWidth });
+      })
+      for (var R = 0; R != data.length; ++R) {
+        var C = -1;
+        _.each(dataCols, (colsSet) => {
+          ++C;
           if (range.s.r > R) range.s.r = R;
           if (range.s.c > C) range.s.c = C;
           if (range.e.r < R) range.e.r = R;
           if (range.e.c < C) range.e.c = C;
           const cell_ref = XLSX.utils.encode_cell({ c: C, r: R });
-          const cellStyle = style[cell_ref] || style[R] || style.default || defaultStyle || false;
-          const cell = {};
+          let cellStyle = style[cell_ref] || style[R] || style["default"] || defaultStyle || false;
+          var cell = {};
           if (cellStyle) {
-            cell.s = cellStyle;
+            cell.s = cellStyle
           }
           if (colsSet.dataIndex && data[R][colsSet.dataIndex] != undefined) {
             cell.v = data[R][colsSet.dataIndex];
@@ -687,18 +669,18 @@ module.exports = (Modal) => ({
               cell.t = 'n';
             } else if (typeof cell.v === 'boolean') cell.t = 'b';
             else if (cell.v instanceof Date) {
-              cell.t = 'n';
-              cell.z = XLSX.SSF._table[14];
+              cell.t = 'n'; cell.z = XLSX.SSF._table[14];
               cell.v = datenum(cell.v);
-            } else cell.t = 's';
+            }
+            else cell.t = 's';
             // console.log(R,colsSet.dataIndex,cell);
           } else if (colsSet.render) {
             // } else if (colsSet.render && data[R]['headerTitle'] != "headerTitle") {
             cell.f = colsSet.render;
             cell.t = 'n';
-          } else cell.v = '';
+          } else cell.v = "";
           ws[cell_ref] = cell;
-        });
+        })
       }
       if (range.s.c < 10000000) ws['!ref'] = XLSX.utils.encode_range(range);
       ws['!cols'] = cols;
@@ -711,37 +693,35 @@ module.exports = (Modal) => ({
       this.Sheets = {};
     }
 
-    if (fileType == 'csv') {
+    if (fileType == "csv") {
       const fileLines = data.map(tt => {
-        const fields = [];
+        let fields = [];
         dataCols.map(ttt => {
           if (tt[ttt.dataIndex] == undefined) {
             // console.log(ttt, "noData", tt);
-            fields.push('""');
+            fields.push("\"\"");
           } else {
-            fields.push(`"${tt[ttt.dataIndex].toString().replace('"', '""')}"`);
+            fields.push("\"" + tt[ttt.dataIndex].toString().replace("\"", "\"\"") + "\"");
           }
-        });
-        return `${fields.join(',')}\r\n`;
+        })
+        return fields.join(",") + "\r\n";
       });
-      const blob = new Blob(fileLines, { type: 'text/plain;charset=utf-8' });
-      saveAs(blob, `${fileName}.csv`);
+      var blob = new Blob(fileLines, { type: "text/plain;charset=utf-8" });
+      saveAs(blob, fileName + ".csv");
     } else {
-      const wb = new Workbook();
-
-      const ws = sheetFromtArrayOftArrays(data);
+      var wb = new Workbook(), ws = sheet_from_array_of_arrays(data);
       if (Array.isArray(merge) && merge.length > 0) ws['!merges'] = merge;
       /* add worksheet to workbook */
       wb.SheetNames.push(fileName);
       wb.Sheets[fileName] = ws;
-      const wbout = XLSX.write(wb, { bookType: 'xlsx', bookSST: true, type: 'binary' });
+      var wbout = XLSX.write(wb, { bookType: 'xlsx', bookSST: true, type: 'binary' });
       function s2ab(s) {
-        const buf = new ArrayBuffer(s.length);
-        const view = new Uint8Array(buf);
-        for (let i = 0; i != s.length; i += 1) view[i] = s.charCodeAt(i) & 0xff;
+        var buf = new ArrayBuffer(s.length);
+        var view = new Uint8Array(buf);
+        for (var i = 0; i != s.length; ++i) view[i] = s.charCodeAt(i) & 0xFF;
         return buf;
       }
-      saveAs(new Blob([s2ab(wbout)], { type: 'application/octet-stream' }), `${fileName}.xlsx`);
+      saveAs(new Blob([s2ab(wbout)], { type: "application/octet-stream" }), fileName + ".xlsx");
     }
   },
   exportExcel({ fileName, data, header, merge }) {
@@ -756,7 +736,7 @@ module.exports = (Modal) => ({
       return (epoch - new Date(Date.UTC(1899, 11, 30))) / (24 * 60 * 60 * 1000);
     }
 
-    function sheetFromtArrayOftArrays(data=[], opts) {
+    function sheetFromtArrayOftArrays(data = [], opts) {
       const ws = {};
       let lineStyle = {};
       let headerTitle = {};
@@ -883,7 +863,7 @@ module.exports = (Modal) => ({
       console.log('onprogress', e);
       onProgress(e);
     };
-    reader.onload = function(e) {
+    reader.onload = function (e) {
       const data = e.target.result;
       function doitnow() {
         try {
@@ -914,7 +894,7 @@ module.exports = (Modal) => ({
           if (rABS) reader.readAsBinaryString(file);
           else reader.readAsArrayBuffer(file);
         },
-        onCancel() {},
+        onCancel() { },
       });
     } else if (rABS) reader.readAsBinaryString(file);
     else reader.readAsArrayBuffer(file);
@@ -973,4 +953,56 @@ module.exports = (Modal) => ({
       .replace(/^元零?|零分/g, '')
       .replace(/元$/g, '元整');
   },
+  // 生成唯一编号。
+  generateNo: async ({ baseNo, noModel, type = '通用', length = 5 }) => {
+    // 这里无法取到model，只能通过参数传递；
+    let install = false;
+    let no = '';
+    let times = 0;
+    while (!install && ++times < 200) {
+      // {no:"ZZ20181200001"};//
+      const result = await noModel.findOne({
+        where: { type, no: { $like: `${baseNo}%` } },
+        order: [['no', 'desc']],
+      });
+      no = '1';
+      if (result) {
+        no = (+result.no.substr(result.no.length - length, length) + 1).toString();
+      }
+      no = `${baseNo}${'0000000000'.substr(0, length - no.length)}${no}`;
+
+      try {
+        install = await noModel.build({ type, no }).save();
+      } catch (error) {
+        console.log(error, install, 'no');
+        install = false;
+      }
+    }
+    // console.log(baseNo, no);
+    return no;
+  },
+  formatListData({ cols, datas, baseData }) {
+    if (!Array.isArray(datas) || datas.length < 1) return [];
+    const tCols = this.getListCols(cols);
+    // console.log(tCols, datas, baseData);
+    const formatCols = [];
+    tCols.forEach(one => {
+      if (one.key && one.dataIndex && datas[0][one.dataIndex] === undefined) {
+        if (one.data) {
+          formatCols.push(one);
+        } else if (one.baseData && baseData[one.baseData]) {
+          formatCols.push({ ...one, data: baseData[one.baseData] });
+        }
+      }
+    })
+    if (formatCols.length < 1) return datas;
+    return datas.map(one => {
+      const formatData = {};
+      formatCols.map(col => {
+        // console.log(col.data, _.isString(one[col.key]) ? (one[col.key] || '').toString().split(',') : one[col.key], 'id', 'name', col.type === 'cascader', one[col.key])
+        formatData[col.dataIndex] = this.showSortName(col.data, _.isString(one[col.key]) ? (one[col.key] || '').toString().split(',') : one[col.key], 'name', col.type === 'cascader', one[col.key]);
+      })
+      return { ...one, ...formatData };
+    })
+  }
 });

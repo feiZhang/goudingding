@@ -4,7 +4,8 @@
  */
 const _ = require('lodash');
 const moment = require('moment');
-const commonLib = require('../../common');
+const tools = require('../../../tools');
+const commonLib = tools({});
 
 module.exports = (config) => {
   const { name, shenpiConfig, U: { rest, error, model, sms } } = config;
