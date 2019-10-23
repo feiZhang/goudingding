@@ -217,15 +217,15 @@ module.exports = ({ Modal }) => ({
   //   ));
   // },
   /**
-   * rootId 根节点Id
-   * mySelf 是否要自己的的首层数据。
-   * */
+     * rootId 根节点Id
+     * mySelf 是否要自己的的首层数据。
+     * */
   listToMap(orgData) {
     const { mySelf = false, parentIdName = 'parentId', valueName = 'id', labelName = 'name', rootId = 0 } = orgData;
     const data = orgData.data ? _.cloneDeep(orgData.data) : [];
-    let runTimes = 0;
+    // let runTimes = 0;
     const fa = function (parentid) {
-      runTimes += 1;
+      // runTimes += 1;
       const tArray = [];
       for (let i = 0; i < data.length; i += 1) {
         const n = data[i];
@@ -244,7 +244,7 @@ module.exports = ({ Modal }) => ({
       return tArray;
     };
     const rvD = fa(rootId);
-    return mySelf ? rvD : (rvD.length > 0 ? rvD[0].children : []);
+    return mySelf && rvD[rootId] ? rvD[rootId].children : rvD;
   },
   /**
    * 将list设置为table需要的rowSpan格式
@@ -612,7 +612,9 @@ module.exports = ({ Modal }) => ({
     let tList = [];
     let tCols = cols;
     if (type === 'list') {
-      tCols = cols.filter(one => !(one.key === 'operation' || one.noList == true || one.type === 'divider'))
+      tCols = cols.filter(one => !(one.key === 'operation' || one.noList === true || one.type === 'divider'))
+    } else if (type === 'export') {
+      tCols = cols.filter(one => !(one.key === 'operation' || one.noExport === true || one.type === 'divider'))
     }
     tCols.map(one => {
       if (one.children) {
@@ -623,64 +625,72 @@ module.exports = ({ Modal }) => ({
     })
     return tList;
   },
-  exportExcelData({ fileName, data, dataHeaders, dataCols, merge, style = {}, defaultWidth = "150", tableCols, fileType = "excel" }) {
+  exportExcelData({ fileName, data, headerData = [], dataCols, merge = [], style = {}, defaultWidth = '150', tableCols = [], fileType = 'excel' }) {
     if (!dataCols && Array.isArray(tableCols) && tableCols.length > 0) {
-      dataCols = this.getListCols({ cols: tableCols });
-      const headerData = {};
+      dataCols = this.getListCols({ cols: tableCols, type: 'export' });
+      // console.log(dataCols);
+      const headerData2 = {};
       dataCols.forEach(one => {
-        headerData[one.dataIndex] = one.title;
+        headerData2[one.dataIndex] = one.title;
       })
-      // eslint-disable-next-line no-console
-      console.log(JSON.stringify(headerData));
-      data.unshift(headerData);
+      data.unshift(headerData2);
     }
-    if (dataHeaders) data = dataHeaders.concat(data);
+    const initData = {};
+    dataCols.map(one => { initData[one.dataIndex] = ''; })
+    data = headerData.map(one => ({ ...initData, ...one })).concat(data);
+    // console.log(!dataCols, Array.isArray(tableCols), tableCols.length > 0, fileName, data, dataCols, merge, style, defaultWidth, tableCols, fileType);
 
-    const defaultStyle = {}
+    const defaultStyle = {};
     function datenum(v, date1904) {
       if (date1904) v += 1462;
-      var epoch = Date.parse(v);
+      const epoch = Date.parse(v);
       return (epoch - new Date(Date.UTC(1899, 11, 30))) / (24 * 60 * 60 * 1000);
     }
-    function sheet_from_array_of_arrays(data, opts) {
-      let ws = {};
-      let range = opts || { s: { c: 10000000, r: 10000000 }, e: { c: 0, r: 0 } };
-      let cols = [];
-      _.each(dataCols, (colsSet) => {
-        cols.push({ wpx: (colsSet.width && colsSet.width.indexOf("%") < 0) ? parseInt(colsSet.width) : defaultWidth });
-      })
-      for (var R = 0; R != data.length; ++R) {
-        var C = -1;
-        _.each(dataCols, (colsSet) => {
-          ++C;
+    function sheetFromtArrayOftArrays(data, opts) {
+      const ws = {};
+      const range = opts || { s: { c: 10000000, r: 10000000 }, e: { c: 0, r: 0 } };
+      const cols = [];
+      _.each(dataCols, colsSet => {
+        cols.push({
+          wpx: colsSet.width && colsSet.width.indexOf('%') < 0 ? parseInt(colsSet.width) : defaultWidth,
+        });
+      });
+      for (let R = 0; R != data.length; R += 1) {
+        let C = -1;
+        _.each(dataCols, colsSet => {
+          C += 1;
           if (range.s.r > R) range.s.r = R;
           if (range.s.c > C) range.s.c = C;
           if (range.e.r < R) range.e.r = R;
           if (range.e.c < C) range.e.c = C;
           const cell_ref = XLSX.utils.encode_cell({ c: C, r: R });
-          let cellStyle = style[cell_ref] || style[R] || style["default"] || defaultStyle || false;
-          var cell = {};
+          const cellStyle = style[cell_ref] || style[R] || style.default || defaultStyle || false;
+          const cell = {};
           if (cellStyle) {
-            cell.s = cellStyle
+            cell.s = cellStyle;
           }
+          // console.log(colsSet.dataIndex, colsSet.dataIndex && data[R][colsSet.dataIndex] != undefined, data[R][colsSet.dataIndex], colsSet.render, colsSet.data)
           if (colsSet.dataIndex && data[R][colsSet.dataIndex] != undefined) {
-            cell.v = data[R][colsSet.dataIndex];
+            cell.v = _.isObject(data[R][colsSet.dataIndex]) ? JSON.stringify(data[R][colsSet.dataIndex]) : data[R][colsSet.dataIndex];
             if (typeof cell.v === 'number') {
               cell.t = 'n';
             } else if (typeof cell.v === 'boolean') cell.t = 'b';
             else if (cell.v instanceof Date) {
-              cell.t = 'n'; cell.z = XLSX.SSF._table[14];
+              cell.t = 'n';
+              cell.z = XLSX.SSF._table[14];
               cell.v = datenum(cell.v);
-            }
-            else cell.t = 's';
+            } else cell.t = 's';
             // console.log(R,colsSet.dataIndex,cell);
           } else if (colsSet.render) {
             // } else if (colsSet.render && data[R]['headerTitle'] != "headerTitle") {
-            cell.f = colsSet.render;
-            cell.t = 'n';
-          } else cell.v = "";
+            const vv = (colsSet.render)(data[R][colsSet.dataIndex], data[R], R);
+            cell.v = vv.toString();
+            cell.t = 's';
+          } else if (colsSet.data) {
+            cell.v = tools.showSortName(colsSet.data, _.isString(data[R][colsSet.key]) ? data[R][colsSet.key].split(',') : data[R][colsSet.key], 'id', 'name', colsSet.type === 'cascader', data[R][colsSet.key])
+          } else cell.v = '';
           ws[cell_ref] = cell;
-        })
+        });
       }
       if (range.s.c < 10000000) ws['!ref'] = XLSX.utils.encode_range(range);
       ws['!cols'] = cols;
@@ -693,35 +703,37 @@ module.exports = ({ Modal }) => ({
       this.Sheets = {};
     }
 
-    if (fileType == "csv") {
+    if (fileType == 'csv') {
       const fileLines = data.map(tt => {
-        let fields = [];
+        const fields = [];
         dataCols.map(ttt => {
           if (tt[ttt.dataIndex] == undefined) {
             // console.log(ttt, "noData", tt);
-            fields.push("\"\"");
+            fields.push('""');
           } else {
-            fields.push("\"" + tt[ttt.dataIndex].toString().replace("\"", "\"\"") + "\"");
+            fields.push(`"${tt[ttt.dataIndex].toString().replace('"', '""')}"`);
           }
-        })
-        return fields.join(",") + "\r\n";
+        });
+        return `${fields.join(',')}\r\n`;
       });
-      var blob = new Blob(fileLines, { type: "text/plain;charset=utf-8" });
-      saveAs(blob, fileName + ".csv");
+      const blob = new Blob(fileLines, { type: 'text/plain;charset=utf-8' });
+      saveAs(blob, `${fileName}.csv`);
     } else {
-      var wb = new Workbook(), ws = sheet_from_array_of_arrays(data);
+      const wb = new Workbook();
+      const ws = sheetFromtArrayOftArrays(data);
+      // console.log(ws,'222');
       if (Array.isArray(merge) && merge.length > 0) ws['!merges'] = merge;
       /* add worksheet to workbook */
       wb.SheetNames.push(fileName);
       wb.Sheets[fileName] = ws;
-      var wbout = XLSX.write(wb, { bookType: 'xlsx', bookSST: true, type: 'binary' });
+      const wbout = XLSX.write(wb, { bookType: 'xlsx', bookSST: true, type: 'binary' });
       function s2ab(s) {
-        var buf = new ArrayBuffer(s.length);
-        var view = new Uint8Array(buf);
-        for (var i = 0; i != s.length; ++i) view[i] = s.charCodeAt(i) & 0xFF;
+        const buf = new ArrayBuffer(s.length);
+        const view = new Uint8Array(buf);
+        for (let i = 0; i != s.length; i += 1) view[i] = s.charCodeAt(i) & 0xff;
         return buf;
       }
-      saveAs(new Blob([s2ab(wbout)], { type: "application/octet-stream" }), fileName + ".xlsx");
+      saveAs(new Blob([s2ab(wbout)], { type: 'application/octet-stream' }), `${fileName}.xlsx`);
     }
   },
   exportExcel({ fileName, data, header, merge }) {
@@ -981,28 +993,17 @@ module.exports = ({ Modal }) => ({
     // console.log(baseNo, no);
     return no;
   },
-  formatListData({ cols, datas, baseData }) {
-    if (!Array.isArray(datas) || datas.length < 1) return [];
-    const tCols = this.getListCols(cols);
-    // console.log(tCols, datas, baseData);
-    const formatCols = [];
-    tCols.forEach(one => {
-      if (one.key && one.dataIndex && datas[0][one.dataIndex] === undefined) {
-        if (one.data) {
-          formatCols.push(one);
-        } else if (one.baseData && baseData[one.baseData]) {
-          formatCols.push({ ...one, data: baseData[one.baseData] });
-        }
-      }
-    })
-    if (formatCols.length < 1) return datas;
-    return datas.map(one => {
-      const formatData = {};
-      formatCols.map(col => {
-        // console.log(col.data, _.isString(one[col.key]) ? (one[col.key] || '').toString().split(',') : one[col.key], 'id', 'name', col.type === 'cascader', one[col.key])
-        formatData[col.dataIndex] = this.showSortName(col.data, _.isString(one[col.key]) ? (one[col.key] || '').toString().split(',') : one[col.key], 'name', col.type === 'cascader', one[col.key]);
+  formatList({ dataList = [], baseData = {}, cols = [] }) {
+    if (!Array.isArray(dataList) || dataList.length < 1) return [];
+    const formatCols = this.getListCols({ cols }).filter(one => (one.data || one.baseData) && (one.format || (dataList[0][one.dataIndex] === undefined))).map(one => ({ ...one, data: one.data ? one.data : baseData[one.baseData] }));
+    // console.log(formatCols, dataList, cols, baseData, 'format');
+    return dataList.map(one => {
+      const formatD = {};
+      formatCols.map((iii) => {
+        formatD[iii.dataIndex || iii.key] = tools.showSortName(iii.data, _.isString(one[iii.key]) ? one[iii.key].split(',') : one[iii.key], 'id', iii.format, iii.type === 'cascader', one[iii.key])
       })
-      return { ...one, ...formatData };
+      // console.log(one, formatD);
+      return { ...one, ...formatD };
     })
-  }
+  },
 });

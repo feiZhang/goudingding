@@ -110,7 +110,7 @@ module.exports = ({ baseModel }) => {
       },
       instanceMethods: {},
       classMethods: {},
-      uploadFields: ['fujian'],
+      // uploadFields: ['fujian'],
     }),
     ext: Object.assign({}, baseExtAttr, {
       sort: {

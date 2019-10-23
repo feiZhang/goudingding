@@ -14,8 +14,7 @@ module.exports = ({ config, U }) => {
       return baseController({ mainModel, U, helper: U.rest.helper });
     },
     shenpi: (shenpiConfig) => {
-      // console.log(shenpiConfig);
-      return shenpi({ baseModel: theBaseModel, U, config, ...shenpiConfig });
+      return shenpi({ baseModel: theBaseModel, U, config, shenpiConfig });
     },
   };
 };

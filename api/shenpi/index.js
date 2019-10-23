@@ -8,7 +8,7 @@ const shenpiController = require('./controllers/shenpi');
 /**
  * shenpiConfig 及审批流程的配置文件
  */
-module.exports = ({ baseModel, name, config, U, shenpiConfig }) => ({
+module.exports = ({ baseModel, name = 'shenpi', config, U, shenpiConfig }) => ({
   models: {
     shenpi: shenpi({ baseModel, U, config }),
     shenpiBuzhou: shenpiBuzhou({ baseModel }),
@@ -16,7 +16,10 @@ module.exports = ({ baseModel, name, config, U, shenpiConfig }) => ({
     shenpiNeirong: shenpiNeirong({ baseModel }),
   },
   controllers: {
-    shenpi: () => shenpiController({ name, U, shenpiConfig, config }),
+    shenpi: () => {
+      // console.log(shenpiConfig, config, 'shenpiConfig');
+      return shenpiController({ name, U, shenpiConfig: shenpiConfig || config.shenpi, config })
+    },
   },
 });
 /*
