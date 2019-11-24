@@ -84,7 +84,8 @@ module.exports = (config) => {
         if (tt.cengji > 0) {
           // 地市级的数据，需要选址选择范围，否则能找到其他地市的人员
           const fdns = (req.user.deptFdn || req.user.dept_fdn || '').split('.');
-          const dishiFdn = `${_.slice(fdns, 0, tt.cengji).join('.')}.%`;
+          // 如果是省分的机关，则下沉一层。
+          const dishiFdn = `${_.slice(fdns, 0, (fdns[1] || '').toString() === '24968' ? Number(tt.cengji) + 1 : tt.cengji).join('.')}.%`;
           const include = [{ model: DeptM, require: true, as: 'userdept', where: { fdn: { $like: dishiFdn } } }];
           userList = await UserM.findAll({ where: userWhere, include, limit: 50 });
           // console.log(userList.length);
@@ -163,7 +164,8 @@ module.exports = (config) => {
     next();
   }
   const shenpiLiuchengSave = async (req, res, next) => {
-    if (req.hooks.mShenpi) {
+    if (req.hooks.mShenpi && req.hooks.neirong) {
+      // 新增时候生成的审批步骤
       const buzhous = req.buzhous.map(rr => {
         rr.shenpiId = req.params.shenpiId;
         return rr;
@@ -171,8 +173,9 @@ module.exports = (config) => {
       await mShenpiBuzhou.bulkCreate(buzhous)
       const toUsers = req.toUserNames.map(rr => ({ ...rr, shenpiId: req.hooks.mShenpi.id }));
       await mShenpiMingxi.bulkCreate(toUsers);
-      res.send(req.hooks.mShenpi);
+      res.send(req.hooks.neirong);
     } else {
+      // 修改
       const buzhouId = [];
       for (const one of req.buzhous) {
         const tBuzhou = await mShenpiBuzhou.findOne({ where: { shenpiId: req.params.shenpiId, index: one.index } });
@@ -194,7 +197,7 @@ module.exports = (config) => {
           mingxiId.push(tmingxi.id);
         } else {
           const n = await mShenpiMingxi.build({ ...one, shenpiId: req.params.shenpiId }).save();
-          console.log(n);
+          // console.log(n);
           mingxiId.push(n.id);
         }
       }

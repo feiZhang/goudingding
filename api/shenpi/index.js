@@ -104,18 +104,13 @@ module.exports = ({ baseModel, name = 'shenpi', config, U, shenpiConfig }) => ({
               {
                 bumen: '与本合同相关的其他部门经理',
                 neirong: '审核',
+                // 返回值 { id: [5025], accountId: [Number(data.zhuguan)] }
                 zhanghao: {
                   role: ({ data }) => {
-                    if (data.shenpiDept === '市场拓展部') {
-                      return [14];
+                    if (Number(data.zhuguan) > 0) {
+                      return { id: [5025], accountId: [Number(data.zhuguan)] };
                     }
-                    if (data.shenpiDept === '党委(行政)办公室') {
-                      return [18];
-                    }
-                    if (data.shenpiDept === '生产支撑中心') {
-                      return [88];
-                    }
-                    return [15];
+                    return { id: [5025] };
                   },
                 },
               },
