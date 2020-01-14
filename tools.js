@@ -23,10 +23,34 @@ const moment = require('moment');
 
 module.exports = ({ Modal }) => ({
   _,
-  getExcelColName(index) {
-    return `${index > 25 ? String.fromCharCode(65 + parseInt(index / 26, 10) - 1) : ''}${String.fromCharCode(65 + (index % 26))}`
+  getExcelColName: (index) => `${index > 25 ? String.fromCharCode(65 + parseInt(index / 26, 10) - 1) : ''}${String.fromCharCode(65 + (index % 26))}`,
+  jiaxing: (t) => {
+    if (t) {
+      if (t.length > 8) {
+        return `${t.substr(0, t.length - 8)}****${t.substr(t.length - 5)}`;
+      } else if (t.length > 2) {
+        return `${t.substr(0, t.length - 2)}**`;
+      }
+    } else {
+      return '';
+    }
   },
   number: () => {
+    // 总结的口诀是：四舍六入五考虑，五后非零就进一，五后皆零看奇偶，五前为偶应舍去，五前为奇要进一！
+    // https://zhuanlan.zhihu.com/p/31202697
+    // 这个方案的方法还是不能用，也许是64位的原因。
+    if (!Number.prototype.__toFixed) {
+      Number.prototype.__toFixed = Number.prototype.toFixed;
+    }
+    Number.prototype._toFixed = function (n) {
+      return Math.round(`${+this}e${n}`) / Math.pow(10, n)
+    }
+    Number.prototype.toFixed = function (n) {
+      return this._toFixed(n).toString();
+      // return (this + 3e-16)._toFixed(n);
+    };
+    // console.log((15822.11+2056.44),Number(15822.11+2056.44).toFixed(1));
+
     // 除法函数，用来得到精确的除法结果
     // 说明：javascript的除法结果会有误差，在两个浮点数相除的时候会比较明显。这个函数返回较为精确的除法结果。
     // 调用：accDiv(arg1,arg2)

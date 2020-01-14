@@ -39,15 +39,16 @@ module.exports = ({ mainModel, helper, U }) => {
     helper.rest.add(mainModel),
   ];
 
-
   const deptDataFilter = (searchDepts = false) => async (req, res, next) => {
+    const Sequelize = U.rest.Sequelize;
     if (req.params.searchDeptId) {
       if (req.user.isAreaManager || req.user.isAdmin || req.user.isAllManager || searchDepts) {
         const theDept = await U.model('dept').findById(req.params.searchDeptId);
         if (theDept) {
+          req.params.searchDeptInfo = theDept;
           const allDept = await U.model('dept').findAll({ where: { fdn: { [Sequelize.Op.like]: `${theDept.fdn}%` } } });
           const sIds = allDept.map(one => one.id);
-          // console.log(searchDepts, 222);
+          // console.log(searchDepts, sIds, 222);
           if (searchDepts) {
             req.params.deptIds = U._.intersection(searchDepts, sIds).join(',');
           } else if (req.user.isAdmin || req.user.isAllManager) {

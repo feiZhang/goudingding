@@ -12,6 +12,17 @@ module.exports = ({ U, config: { service, upload } }) => {
     let tValue = model.getDataValue(fieldName);
     if (tValue === undefined) return undefined;
     switch (type) {
+      case 'miao':
+        //天数计算
+        const days = Math.floor((tValue) / (24 * 3600));
+        //小时计算
+        const hours = Math.floor((tValue) % (24 * 3600) / 3600);
+        //分钟计算
+        const minutes = Math.floor((tValue) % 3600 / 60);
+        //秒计算
+        const second = (tValue) % 60;
+        tValue = `${days > 0 ? days + '天' : ''}${hours > 0 || days > 0 ? hours + '小时' : ''}${minutes > 0 || hours > 0 || days > 0 ? minutes + '分钟' : ''}${second > 0 || minutes > 0 || hours > 0 || days > 0 ? second + '秒' : ''}`;
+        break;
       case 'json':
         tValue = !tValue || _.trim(tValue) === '' ? defaultVal : _.isString(tValue) ? JSON.parse(tValue) : tValue;
         break;
@@ -32,21 +43,6 @@ module.exports = ({ U, config: { service, upload } }) => {
         break;
       case 'files': {
         const list = tValue ? JSON.parse(tValue) : [];
-        // console.log("formatDbField1", fieldName, tValue);
-        // list = list.map(item => {
-        //   if (!item.path) {
-        //     //在这里进行path设置，会在数据creater之前，进行path设定，从而让 saveUploadFile 函数在afterCreate中执行，保证获取到数据的id
-        //     //数据保存是，从临时上传目录copy文件到实际存放的目标目录
-        //     const monthPath = moment().format("YYYYMM");
-        //     const dayPath = monthPath + "/" + moment().format("DD");
-        //     if (!U.fs.existsSync(config.upload.dir + "/" + monthPath)) U.fs.mkdir(config.upload.dir + "/" + monthPath);
-        //     if (!U.fs.existsSync(config.upload.dir + "/" + dayPath)) U.fs.mkdir(config.upload.dir + "/" + dayPath);
-        //     item.path = "/" + dayPath;
-        //   }
-        //   return item;
-        // });
-        // tValue = JSON.stringify(list);
-        // model[fieldName] = tValue;
         let key = '';
         const keyFile = `${upload.dir}/photo.txt`;
         if (fs.existsSync(keyFile)) {
@@ -55,7 +51,7 @@ module.exports = ({ U, config: { service, upload } }) => {
         const formatFile = (fileList) => {
           return fileList.map(item => {
             if (item && item.uid && item.path) {
-              item.url = item && item.uid ? `${upload.accessUrl}?notgzip=1&f=${item.path || ''}/${item.uid}&n=${item.name}&key=${key}` : '';
+              item.url = item && item.uid ? `${upload.accessUrl}?notgzip=1&f=${item.path || ''}/${item.uid}&n=${item.name}&dir=${item.dir}&key=${key}` : '';
             }
             if (Array.isArray(item.children) && item.children.length > 0) {
               item.children = formatFile(item.children);
@@ -80,12 +76,8 @@ module.exports = ({ U, config: { service, upload } }) => {
       // console.log(uids, oldFile);
       if (oldFile.uid && oldFile.uid !== '' && (haveUids === 'all' || haveUids.indexOf(oldFile.uid) < 0)) {
         try {
-          // console.log('rm ' + config.upload.dir + "/" + oldFile.uid);
-          console.log(`mv ${upload.dir}${oldFile.path}/${oldFile.uid} ${upload.deleteDir}/`);
-          exec(`mv ${upload.dir}${oldFile.path}/${oldFile.uid} ${upload.deleteDir}/`);
-          // U.model('uploadFile').destroy({ where: { uid: oldFile.uid } });
-          // child_process.exec('rm ' + config.upload.dir + "/" + oldFile.uid);
-          // U.fs.unlink(config.upload.dir + "/" + oldFile.uid);  //文件不存在时出错
+          console.log(`mv ${U.getDir(oldFile.dir)}${oldFile.path}/${oldFile.uid} ${upload.deleteDir}/`);
+          exec(`mv ${U.getDir(oldFile.dir)}${oldFile.path}/${oldFile.uid} ${upload.deleteDir}/`);
         } catch (e) {
           console.log(e);
         }
@@ -336,9 +328,6 @@ module.exports = ({ U, config: { service, upload } }) => {
           if (model[item] && model[item] !== '') {
             const newFiles = _.isString(model[item]) ? JSON.parse(model[item]) : model[item];
             delFileTo(newFiles, 'all');
-            // newFiles.forEach(nF => {
-            //   exec(`mv ${upload.dir}${nF.path}/${nF.uid} ${upload.deleteDir}/`);
-            // });
           }
         });
       }
@@ -351,11 +340,12 @@ module.exports = ({ U, config: { service, upload } }) => {
         // console.log(fileList,'ffff');
         fileList.forEach(nF => {
           if (nF.uid && nF.uid !== '') {
+            const fileDir = U.getDir(nF.dir);
             const tttName = nF.uid.split('.');
             const tFile = `${service.bodyParser.uploadDir}/${tttName[0]}`;
             if (fs.existsSync(tFile)) {
-              console.log(`mv ${tFile} ${upload.dir}${nF.path}/${nF.uid}`);
-              exec(`mv ${tFile} ${upload.dir}${nF.path}/${nF.uid}`);
+              console.log(`mv ${tFile} ${fileDir}${nF.path}/${nF.uid}`);
+              exec(`mv ${tFile} ${fileDir}${nF.path}/${nF.uid}`);
               U.model('uploadFile').update(
                 Object.assign(nF, {
                   dataId: model.id,
@@ -365,7 +355,7 @@ module.exports = ({ U, config: { service, upload } }) => {
               );
               uids.push(nF.uid);
             } else {
-              console.log(`no ${tFile} ${upload.dir}${nF.path}/${nF.uid}`);
+              console.log(`no ${tFile} ${fileDir}${nF.path}/${nF.uid}`);
             }
           }
           if (Array.isArray(nF.children) && nF.children.length > 0) {
