@@ -274,11 +274,21 @@ module.exports = (config) => {
         if (!mainData) {
           return next(error('非法请求!'));
         }
-        const isMy = await mShenpiBuzhou.findOne({
-          where: { id: req.params.id, toUserIds: { $like: `%,${req.user.id},%` } },
+        if ((mainData.currentUserIds || '').indexOf(`,${req.user.id},`) < 0) {
+          next(U.error('此审批还没到您的处理步骤，或您已处理!'));
+          return;
+        }
+        const isMyMingxi = await mShenpiMingxi.findOne({ where: { shenpiId: req.params.shenpiId, userId: req.user.id, roleId: req.params.roleId, index: req.params.index, isDelete: 0 } });
+        if (!isMyMingxi) {
+          next(error('请求的数据不存在或您没权限处理或还没到您处理步骤或您已处理!'));
+        } else if (isMyMingxi.color !== 'red') {
+          next(error('此步骤您已处理，请刷新查看!'));
+        }
+        const isMyBuzhou = await mShenpiBuzhou.findOne({
+          where: { id: req.params.id, zhuangtai: '待办', toUserIds: { $like: `%,${req.user.id},%` } },
         });
-        if (!isMy) {
-          next(error('请求的数据不存在或您没权限处理!'));
+        if (!isMyBuzhou) {
+          next(error('请求的数据不存在或您没权限处理或还没到您处理步骤或您已处理!'));
           return;
         }
         let smsUserIds = [];
