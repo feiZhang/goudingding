@@ -247,7 +247,7 @@ module.exports = ({ U, config: { service, upload } }) => {
       if (changed) {
         const tableSetStr = [];
         let newFdn = '';
-        if (changed.indexOf('fdnId') > -1 && model.previous('fdnId') != 0) {
+        if ((changed.indexOf('fdnId') > -1 || changed.indexOf('parentFdn') > -1) && model.previous('fdnId') != 0) {
           newFdn = `${model.parentFdn}${model.fdnId}.`;
           tableSetStr.push('parentFdn=CONCAT(:parentFdn,SUBSTRING(fdn,:len))');
           tableSetStr.push('fdn = CONCAT(:parentFdn,SUBSTRING(fdn,:len))');

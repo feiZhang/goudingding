@@ -46,7 +46,7 @@ module.exports = ({ mainModel, helper, U }) => {
         const theDept = await U.model('dept').findById(req.params.searchDeptId);
         if (theDept) {
           req.params.searchDeptInfo = theDept;
-          const allDept = await U.model('dept').findAll({ where: { fdn: { [Sequelize.Op.like]: `${theDept.fdn}%` } } });
+          const allDept = await U.model('dept').findAll({ where: { ...(req.deptWhere || {}), fdn: { [Sequelize.Op.like]: `${theDept.fdn}%` } } });
           const sIds = allDept.map(one => one.id);
           // console.log(searchDepts, sIds, 222);
           if (searchDepts) {
