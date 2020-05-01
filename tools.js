@@ -633,6 +633,7 @@ module.exports = ({ Modal }) => ({
    */
   // 新版本
   getListCols({ cols, type = 'list' }) {
+    if (!cols || !Array.isArray(cols)) return [];
     let tList = [];
     let tCols = cols;
     if (type === 'list') {
@@ -1017,17 +1018,35 @@ module.exports = ({ Modal }) => ({
     // console.log(baseNo, no);
     return no;
   },
-  formatList({ dataList = [], baseData = {}, cols = [] }) {
+  formatList({ dataList = [], baseData = {}, cols = [], showCount = false }) {
     if (!Array.isArray(dataList) || dataList.length < 1) return [];
-    const formatCols = this.getListCols({ cols }).filter(one => (one.data || one.baseData) && (one.format || (dataList[0][one.dataIndex] === undefined))).map(one => ({ ...one, data: one.data ? one.data : baseData[one.baseData] }));
+    const noArray = !Array.isArray(dataList);
+    const tDataList = noArray ? [dataList] : dataList;
+
+    const formatCols = this.getListCols({ cols }).filter(one => (one.data || one.baseData) && (one.format || (tDataList[0][one.dataIndex] === undefined))).map(one => ({ ...one, data: one.data ? one.data : baseData[one.baseData] }));
     // console.log(formatCols, dataList, cols, baseData, 'format');
-    return dataList.map(one => {
+    const newData = tDataList.map(one => {
       const formatD = {};
       formatCols.map((iii) => {
-        formatD[iii.dataIndex || iii.key] = tools.showSortName(iii.data, _.isString(one[iii.key]) ? one[iii.key].split(',') : one[iii.key], 'id', iii.format, iii.type === 'cascader', one[iii.key])
-      })
+        formatD[iii.dataIndex || iii.key] = tools.showSortName(iii.data, (_.isString(one[iii.key]) ? one[iii.key].split(',') : one[iii.key]), 'id', iii.format, iii.type === 'cascader', one[iii.key]);
+      });
       // console.log(one, formatD);
       return { ...one, ...formatD };
-    })
+    });
+    if (showCount && _.isObject(showCount)) {
+      const dataSourceCount = {};
+      _.each(showCount, (val, key) => {
+        // eslint-disable-next-line no-restricted-globals
+        if (isNaN(val)) {
+          dataSourceCount[key] = val;
+        } else {
+          (newData || []).forEach(one => {
+            dataSourceCount[key] = Number(dataSourceCount[key] || 0).add(one[key] || 0);
+          })
+        }
+      });
+      return noArray ? newData[0] : newData.concat(dataSourceCount);
+    }
+    return noArray ? newData[0] : newData;
   },
 });

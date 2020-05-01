@@ -39,6 +39,35 @@ module.exports = ({ mainModel, helper, U }) => {
     helper.rest.add(mainModel),
   ];
 
+  const searchDeptCheck = async ({ user = {}, searchDeptId, yewuManager = [] }) => {
+    const manageDeptIds = [];
+    let manageLevel = 9;
+    const isAdmin = user.isAdmin || user.isAllManager;
+    if (!isAdmin) {
+      if (user.isAreaManager) {
+        manageDeptIds = manageDeptIds.concat(user.isAreaManager.manageDeptIds);
+        manageLevel = user.isAreaManager.manageLevel;
+      }
+      yewuManager.map(one => {
+        if (user[one]) {
+          if (user[one].manageLevel < manageLevel) manageLevel = user[one].manageLevel;
+          manageDeptIds = manageDeptIds.concat(user[one].manageDeptIds);
+        }
+      })
+    }
+    if (searchDeptId) {
+      if (!(isAdmin || manageDeptIds.indexOf(searchDeptId) >= 0)) return false;
+
+      const theDept = await U.model('dept').findById(searchDeptId);
+      if (theDept && (isAdmin || manageDeptIds.indexOf(theDept.id) >= 0)) {
+        return theDept.get();
+      }
+      return false;
+    }
+    if (isAdmin || manageLevel === 1) return true;
+    return { manageLevel, manageDeptIds }; // 你最大能够管理的范围，地市、中心、服务站
+  }
+
   const deptDataFilter = (searchDepts = false) => async (req, res, next) => {
     const Sequelize = U.rest.Sequelize;
     if (req.params.searchDeptId) {
@@ -77,12 +106,12 @@ module.exports = ({ mainModel, helper, U }) => {
     next();
   };
 
-  const deptList = (haveDelete = false) => async (req, res, next) => {
+  const deptList = ({ haveDelete = false, where = {}, attributes, order }) => async (req, res, next) => {
     const mDept = U.model('dept');
     const d = await mDept.findAll({
-      attributes: ['renliId', 'id', 'orderNum', 'name', 'fdnLevel', 'fullName', 'fdn'],
-      paranoid: !haveDelete,
-      order: [['fdnLevel', 'asc'], ['orderNum', 'asc']],
+      attributes: attributes || ['renliId', 'id', 'orderNum', 'name', 'fdnLevel', 'fullName', 'fdn'],
+      paranoid: !haveDelete, where,
+      order: order || [['fdnLevel', 'asc'], ['orderNum', 'asc']],
     });
     const cityList = { 0: { id: 0, cityId: 0, cityName: '其他', orderNum: 0, name: '其他' } };
     const wfqList = {
@@ -91,8 +120,7 @@ module.exports = ({ mainModel, helper, U }) => {
     const wgList = {
       0: { id: 0, cityId: 0, cityName: '其他', orderNum: 0, wfqId: 0, wfqName: '其他', wgName: '其他', wgId: 0, name: '其他' },
     };
-    const wgCantonIdToId = {};
-    req.params.searchDeptIds = [0];
+    const renliIdToId = {};
     d.forEach(ii => {
       const tempFdn = ii.fdn.split('.');
       if (ii.fdnLevel === 2) {
@@ -102,18 +130,19 @@ module.exports = ({ mainModel, helper, U }) => {
         wfqList[ii.id] = Object.assign({}, cityList[tempFdn[1]], { id: ii.id, wfqId: ii.id, wfqName: ii.name, name: ii.name });
       }
       if (ii.fdnLevel === 4) {
-        wgCantonIdToId[ii.canton_id] = ii.id;
         wgList[ii.id] = Object.assign({}, wfqList[tempFdn[2]], { id: ii.id, wgName: ii.name, wgId: ii.id, name: ii.name });
       }
+      renliIdToId[ii.canton_id] = ii.id;
     });
     // 生成每个网格的机构信息。
-    req.deptList = { city: cityList, wfq: wfqList, wg: wgList };
+    req.deptList = { city: cityList, wfq: wfqList, wg: wgList, renliIdToId };
     next();
   };
 
   return {
     deptDataFilter,
     deptList,
+    searchDeptCheck,
     list,
     detail,
     modify,

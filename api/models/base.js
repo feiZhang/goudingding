@@ -12,6 +12,10 @@ module.exports = ({ U, config: { service, upload } }) => {
     let tValue = model.getDataValue(fieldName);
     if (tValue === undefined) return undefined;
     switch (type) {
+      case 'xiaoshishu':
+        const xiaoshis = Number(tValue).div(3600).toFixed(2);
+        return `${xiaoshis}小时`;
+        break;
       case 'miao':
         //天数计算
         const days = Math.floor((tValue) / (24 * 3600));
