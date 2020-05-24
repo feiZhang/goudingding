@@ -10,8 +10,8 @@ module.exports = ({ config, U }) => {
   return {
     tools,
     baseModel: theBaseModel,
-    baseController: ({ mainModel }) => {
-      return baseController({ mainModel, U, helper: U.rest.helper });
+    baseController: ({ mainModel, importModel }) => {
+      return baseController({ mainModel, U, helper: U.rest.helper, importModel });
     },
     shenpi: (shenpiConfig) => {
       return shenpi({ baseModel: theBaseModel, U, config, shenpiConfig });

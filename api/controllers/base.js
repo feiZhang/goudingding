@@ -1,10 +1,27 @@
-module.exports = ({ mainModel, helper, U }) => {
+module.exports = ({ mainModel, helper, U, importModel }) => {
   const list = [
     // helper.checker.sysAdmin(),
     helper.rest.list(mainModel, '', null, 'list_data'),
     (req, res) => {
       res.send({ data: req.hooks.list_data, count: res.header('X-Content-Record-Total') || 0 });
     },
+  ];
+
+  const importList = [
+    (req, res, next) => {
+      if (req.params.baseImportFileId) {
+        req.params.importFileId = req.params.baseImportFileId;
+      }
+      if (req.params.baseFileId) {
+        req.params.importFileId = req.params.baseFileId;
+      }
+      if (req.params.isError && Array.isArray(req.params.isError)) req.params.isError = req.params.isError.join(',');
+      const list = helper.rest.list(req.params.baseImportFileId ? importModel : mainModel, '', null, 'list_data');
+      list(req, res, () => {
+        res.send({ data: req.hooks.list_data, count: res.header('X-Content-Record-Total') || 0 });
+        next();
+      })
+    }
   ];
 
   const modify = [
@@ -144,9 +161,11 @@ module.exports = ({ mainModel, helper, U }) => {
     deptList,
     searchDeptCheck,
     list,
+    importList,
     detail,
     modify,
     remove,
     add,
+    helper,
   };
 };
