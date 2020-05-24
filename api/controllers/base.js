@@ -2,8 +2,9 @@ module.exports = ({ mainModel, helper, U, importModel }) => {
   const list = [
     // helper.checker.sysAdmin(),
     helper.rest.list(mainModel, '', null, 'list_data'),
-    (req, res) => {
+    (req, res, next) => {
       res.send({ data: req.hooks.list_data, count: res.header('X-Content-Record-Total') || 0 });
+      next();
     },
   ];
 
@@ -16,8 +17,8 @@ module.exports = ({ mainModel, helper, U, importModel }) => {
         req.params.importFileId = req.params.baseFileId;
       }
       if (req.params.isError && Array.isArray(req.params.isError)) req.params.isError = req.params.isError.join(',');
-      const list = helper.rest.list(req.params.baseImportFileId ? importModel : mainModel, '', null, 'list_data');
-      list(req, res, () => {
+      const tlist = helper.rest.list(req.params.baseImportFileId ? importModel : mainModel, '', null, 'list_data');
+      tlist(req, res, () => {
         res.send({ data: req.hooks.list_data, count: res.header('X-Content-Record-Total') || 0 });
         next();
       })
@@ -56,10 +57,21 @@ module.exports = ({ mainModel, helper, U, importModel }) => {
     helper.rest.add(mainModel),
   ];
 
-  const searchDeptCheck = async ({ user = {}, searchDeptId, yewuManager = [] }) => {
-    const manageDeptIds = [];
+  /***
+   * 根据用户的管理权限，与 要查询的机构，组合出根据机构ID进行数据过滤的功能。
+   * user           用户的登录信息
+   * searchDeptId   url传递的查询机构id
+   * yewuManager    业务管理角色信息
+   *
+   * 返回值 false:没有查询权限，直接返回空，不用进行数据查询
+   *        true:全部权限，不用进行部门过滤
+   *        {manageLevel:最大能够查询的级别(暂无用), manageDeptIds(需要附加的查询范围)}
+   **/
+  const searchDeptCheck = async ({ user = {}, searchDeptId, yewuManager = [], onlySearchDept = false }) => {
+    let manageDeptIds = [];
     let manageLevel = 9;
     const isAdmin = user.isAdmin || user.isAllManager;
+    // 不是超级管理员，则根据区域管理员管理范围、业务管理员管理范围，进行合并，获取此次查询的基础管理范围。
     if (!isAdmin) {
       if (user.isAreaManager) {
         manageDeptIds = manageDeptIds.concat(user.isAreaManager.manageDeptIds);
@@ -68,16 +80,20 @@ module.exports = ({ mainModel, helper, U, importModel }) => {
       yewuManager.map(one => {
         if (user[one]) {
           if (user[one].manageLevel < manageLevel) manageLevel = user[one].manageLevel;
+          // console.log(manageDeptIds, user[one].manageDeptIds, 888);
           manageDeptIds = manageDeptIds.concat(user[one].manageDeptIds);
         }
       })
+      if (manageDeptIds.length < 1) return false;
     }
     if (searchDeptId) {
       if (!(isAdmin || manageDeptIds.indexOf(searchDeptId) >= 0)) return false;
 
       const theDept = await U.model('dept').findById(searchDeptId);
       if (theDept && (isAdmin || manageDeptIds.indexOf(theDept.id) >= 0)) {
-        return theDept.get();
+        if (onlySearchDept) return theDept.get();
+        const depts = await U.model('dept').findAll({ where: { fdn: { [Op.like]: `${theDept.fdn}%` } } });
+        return { manageLevel, deptInfo: theDept.get(), manageDeptIds: depts.map(one => one.id) };
       }
       return false;
     }

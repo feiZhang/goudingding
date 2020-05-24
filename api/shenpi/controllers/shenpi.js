@@ -55,11 +55,12 @@ module.exports = (config) => {
         toUserNames.push({ updatedAt: null, index, userId: req.user.id, name: req.user.name, color: 'red', roleId: tt.zhanghao.isme });
       } else if (tt.zhanghao.role) {
         if (tt.zhanghao.role instanceof Function) {
-          const rvRole = tt.zhanghao.role({ data: req.params, user: req.user, liucheng: shenpiLiucheng, index: ii });
-          tt.zhanghao.role = rvRole.id ? rvRole : { id: rvRole };
+          tt.zhanghao.role = await tt.zhanghao.role({ data: req.params, user: req.user, liucheng: shenpiLiucheng, index: ii });
+          // 为了兼容历史配置，进行判定。比如：函数直接返回 false;
+          // tt.zhanghao.role = rvRole.id ? rvRole : { id: rvRole };
         }
         // console.log(tt, tt.zhanghao.role.id, 'check', req.user.dept_id, req.user.role_id, req.user.role_id.indexOf(94));
-        if (tt.zhanghao.role.id === false) {
+        if (tt.zhanghao.role === false || tt.zhanghao.role.id === false) {
           // 有些步骤根据情况，可以跳过。
           // eslint-disable-next-line no-continue
           continue;
@@ -75,12 +76,17 @@ module.exports = (config) => {
             $in: tt.zhanghao.role.accountId,
           };
         }
+        if (Array.isArray(tt.zhanghao.role.dutyId)) {
+          userWhere.dutyId = {
+            $in: tt.zhanghao.role.dutyId,
+          };
+        }
         if (tt.zhanghao.role.deptFdn) {
           deptWhere.fdn = { $like: tt.zhanghao.role.deptFdn };
         }
         // 在代码里面配置，这里就不需要了。也不用写dept_id了。
         // UserM.belongsTo(DeptM, { foreignKey: 'dept_id', sourceKey: 'id', as: 'userdept', scope: { isDelete: 'no' } });
-        console.log(tt);
+        console.log('shenpiBuzhou', JSON.stringify(shenpiLiucheng[ii]), JSON.stringify(tt), userWhere, deptWhere);
         if (tt.cengji > 0) {
           // 地市级的数据，需要选址选择范围，否则能找到其他地市的人员
           const fdns = (req.user.deptFdn || req.user.dept_fdn || '').split('.');
@@ -94,27 +100,42 @@ module.exports = (config) => {
           userList = await UserM.findAll({ where: userWhere, include, limit: 50 });
           // console.log(userList.length);
         }
-        // 为了在前端摆放的合适的格子里，需要角色数据，
-        // 遍历这个角色数据，是为了说明此用户是以那个角色被选中的，一个用户可以以多个角色参与流程审批。
-        // 但是审批意见要填在对应的角色中。
-        // eslint-disable-next-line no-loop-func
-        tt.zhanghao.role.id.forEach(roleId => {
-          const roleUserList = userList.filter(one => one.roleId.indexOf(`,${roleId},`) >= 0);
-          if (shenpiConfig[req.params.shenpiType].readOnly.indexOf(roleId) < 0) {
-            roleUserList.forEach(mm => {
-              const haveUser = _.find(toUserNames, { userId: mm.id });
-              if (!haveUser) toUserNames.push({
-                updatedAt: null,
-                index,
-                deptName: mm.userdept.name,
-                userId: mm.id,
-                name: mm.name,
-                color: 'red',
-                roleId,
-              });
+        if (!Array.isArray(tt.zhanghao.role.id)) {
+          userList.forEach(mm => {
+            toUserNames.push({
+              updatedAt: null,
+              index,
+              deptName: mm.userdept.name,
+              userId: mm.id,
+              name: mm.name,
+              color: 'red',
+              roleId: 0,
             });
-          }
-        });
+          });
+        } else {
+          // 为了在前端摆放的合适的格子里，需要角色数据，
+          // 遍历这个角色数据，是为了说明此用户是以那个角色被选中的，一个用户可以以多个角色参与流程审批。
+          // 但是审批意见要填在对应的角色中。
+          // 上面的UserList只是用户列表，如果一个用户的多个角色参与，就需要生成多条，
+          // eslint-disable-next-line no-loop-func
+          tt.zhanghao.role.id.forEach(roleId => {
+            const roleUserList = userList.filter(one => one.roleId.indexOf(`,${roleId},`) >= 0);
+            if (shenpiConfig[req.params.shenpiType].readOnly.indexOf(roleId) < 0) {
+              roleUserList.forEach(mm => {
+                const haveUser = _.find(toUserNames, { userId: mm.id });
+                if (!haveUser) toUserNames.push({
+                  updatedAt: null,
+                  index,
+                  deptName: mm.userdept.name,
+                  userId: mm.id,
+                  name: mm.name,
+                  color: 'red',
+                  roleId,
+                });
+              });
+            }
+          });
+        }
       }
       const toUserIds = toUserNames.map(mm => mm.userId);
       allUserIds = userList.map(mm => mm.id).concat(allUserIds);
@@ -155,7 +176,7 @@ module.exports = (config) => {
       nextSelectUser = tt.selectUser || 0;
     }
     req.params.allUserIds = `,${allUserIds.join(',')},`;
-    // console.log(buzhous);
+    console.log(buzhous);
     // 用户生成步骤和明细的数组。
     req.buzhous = buzhous;
     // console.log(req.buzhous);
