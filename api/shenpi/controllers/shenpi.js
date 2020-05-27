@@ -10,6 +10,9 @@ const commonLib = tools({});
 module.exports = (config) => {
   const { name = 'shenpi', shenpiConfig, U: { rest, error, model, sms }, } = config;
   const { helper } = rest;
+  const Sequelize = rest.Sequelize;
+  const Op = Sequelize.Op;
+
   // console.log(name, model, shenpiConfig);
   if (!name) return {};
   const mShenpi = model(name);
@@ -234,6 +237,7 @@ module.exports = (config) => {
         return next(error('非法请求'));
       }
       req.params.shenpiId = 0;
+      _options = {};
       // 代办的
       if (req.params.sendToMy) {
         if (req.params.isHistory) {
@@ -245,8 +249,7 @@ module.exports = (config) => {
           }
           if (!req.params.zhuangtais) req.params.zhuangtais = '已结束,办理中';
         } else {
-          req.params.currentUserIds_like = `%,${req.user.id},%`;
-          req.params.zhuangtai = '办理中';
+          _options.where = { [Op.or]: [{ currentUserIds: { [Op.like]: `%,${req.user.id},%` }, zhuangtai: '办理中' }, { creatorId: req.user.id, zhuangtai: '未提交' }] }
         }
       } else if (!req.user.isAdmin) {
         req.params.creatorId = req.user.id;
@@ -267,9 +270,9 @@ module.exports = (config) => {
           }
         }
       }
-      next();
+      const tList = helper.rest.list(mShenpi, '', null, 'list_data', _options);
+      tList(req, res, next);
     },
-    helper.rest.list(mShenpi, '', null, 'list_data'),
     async (req, res, next) => {
       const workIds = req.hooks.list_data.map(tt => tt.id);
       const buzhous = req.params.haveBuzhou ? await mShenpiBuzhou.findAll({ where: { shenpiId: { $in: workIds } }, order: [['id', 'desc']] }) : [];

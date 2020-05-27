@@ -1,4 +1,5 @@
 module.exports = ({ mainModel, helper, U, importModel }) => {
+  const Op = U.rest.Sequelize.Op;
   const list = [
     // helper.checker.sysAdmin(),
     helper.rest.list(mainModel, '', null, 'list_data'),
