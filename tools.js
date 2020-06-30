@@ -20,6 +20,7 @@
 /* eslint-disable eqeqeq */
 const _ = require('lodash');
 const moment = require('moment');
+const fs = require('fs');
 
 module.exports = ({ Modal }) => ({
   _,
@@ -34,6 +35,13 @@ module.exports = ({ Modal }) => ({
     } else {
       return '';
     }
+  },
+  dbError: ({ type, error, req, config }) => {
+    console.log(type, JSON.stringify(error));
+    const info = JSON.stringify({ type, error: JSON.stringify(error), ip: config.db.host, port: config.service.port, params: JSON.stringify(req.params), url: `${req.url} ${req.method}` });
+    const fileName = fs.openSync(`${config.service.bodyParser.uploadDir}/dbError.txt`, 'a');
+    fs.writeSync(fileName, info);
+    fs.closeSync(fileName);
   },
   number: () => {
     // 总结的口诀是：四舍六入五考虑，五后非零就进一，五后皆零看奇偶，五前为偶应舍去，五前为奇要进一！

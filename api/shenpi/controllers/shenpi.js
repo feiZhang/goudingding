@@ -8,13 +8,13 @@ const tools = require('../../../tools');
 const commonLib = tools({});
 
 module.exports = (config) => {
-  const { name = 'shenpi', shenpiConfig, U: { rest, error, model, sms }, } = config;
+  const { shenpiConfig, U: { rest, error, model, sms }, } = config;
   const { helper } = rest;
   const Sequelize = rest.Sequelize;
   const Op = Sequelize.Op;
-
+  const { name = 'shenpi', userModelName = 'user', deptModelName = 'dept' } = shenpiConfig;
   // console.log(name, model, shenpiConfig);
-  if (!name) return {};
+  // if (!name) return {};
   const mShenpi = model(name);
   const mShenpiMingxi = model(`${name}Mingxi`);
   const mShenpiBuzhou = model(`${name}Buzhou`);
@@ -26,8 +26,8 @@ module.exports = (config) => {
   const shenpiLiucheng = async (req, res, next) => {
     // 生成流程数据。
     const buzhous = [];
-    const UserM = model('user');
-    const DeptM = model('dept');
+    const UserM = model(userModelName);
+    const DeptM = model(deptModelName);
     let allUserIds = [];
     let nextToUsers = JSON.stringify([]);
     let nextSelectUser = 0;
@@ -233,9 +233,9 @@ module.exports = (config) => {
   const list = [
     // helper.checker.sysAdmin(),
     async (req, res, next) => {
-      if (!req.params.shenpiType || !model(`${name}Neirong_${(req.params.shenpiType || '').toLowerCase()}`)) {
-        return next(error('非法请求'));
-      }
+      // if (!req.params.shenpiType || !model(`${name}Neirong_${(req.params.shenpiType || '').toLowerCase()}`)) {
+      //   return next(error('非法请求'));
+      // }
       req.params.shenpiId = 0;
       _options = {};
       // 代办的
@@ -416,7 +416,7 @@ module.exports = (config) => {
             break;
         }
         if (shenpiConfig[mainData.shenpiType].sendSms && smsUserIds.length > 0) {
-          model('user')
+          model(userModelName)
             .findAll({ where: { id: { $in: smsUserIds } } })
             .then(users => {
               if (users.length > 0) {

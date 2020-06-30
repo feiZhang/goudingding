@@ -53,7 +53,8 @@ module.exports = ({ U, config: { service, upload } }) => {
           key = fs.readFileSync(keyFile);
         }
         const formatFile = (fileList) => {
-          return fileList.map(item => {
+          if (!Array.isArray(fileList)) return [];
+          return (fileList || []).map(item => {
             if (item && item.uid && item.path) {
               item.url = item && item.uid ? `${upload.accessUrl}?notgzip=1&f=${item.path || ''}/${item.uid}&n=${item.name}&dir=${item.dir}&key=${key}` : '';
             }
