@@ -526,7 +526,7 @@ module.exports = (config) => {
       req.params.cityName = userCityInfo.name;
       req.params.cityId = userCityInfo.renliId;
 
-      const baseNo = ((config.config.CITY_JC || {})[req.params.cityId] || 'WZ') + moment().format('YYYYMM');
+      const baseNo = req.params.baseNo ? req.params.baseNo : `${((config.config.CITY_JC || {})[req.params.cityId] || 'WZ')}${moment().format('YYYYMM')}`;
       req.params.no = await commonLib.generateNo({ baseNo, noModel: model('no'), type: `shenpi_${req.params.shenpiType}`, });
       next();
     },
