@@ -18,6 +18,7 @@ module.exports = ({ mainModel, helper, U, importModel }) => {
         req.params.importFileId = req.params.baseFileId;
       }
       if (req.params.isError && Array.isArray(req.params.isError)) req.params.isError = req.params.isError.join(',');
+      else if (req.params.isError) req.params.isError = 1;
       const tlist = helper.rest.list(req.params.baseImportFileId ? importModel : mainModel, '', null, 'list_data');
       tlist(req, res, () => {
         res.send({ data: req.hooks.list_data, count: res.header('X-Content-Record-Total') || 0 });
@@ -99,7 +100,7 @@ module.exports = ({ mainModel, helper, U, importModel }) => {
       return false;
     }
     if (isAdmin || manageLevel === 1) return true;
-    return { manageLevel, manageDeptIds }; // 你最大能够管理的范围，地市、中心、服务站
+    return { manageLevel, manageDeptIds: U._.uniq(manageDeptIds) }; // 你最大能够管理的范围，地市、中心、服务站
   }
 
   const deptDataFilter = (searchDepts = false) => async (req, res, next) => {
