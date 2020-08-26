@@ -8,7 +8,7 @@ const tools = require('../../../tools');
 const commonLib = tools({});
 
 module.exports = (config) => {
-  const { shenpiConfig, U: { rest, error, model, sms }, } = config;
+  const { shenpiConfig, U: { rest, error, model, sms }, config: sysConfig } = config;
   const { helper } = rest;
   const Sequelize = rest.Sequelize;
   const Op = Sequelize.Op;
@@ -48,7 +48,7 @@ module.exports = (config) => {
       // 导致 tt.zhanghao.role instanceof Function  不起作用。
       // 在control中，不在具体方法中的头部信息，应该是只执行一次。导致config信息是全生命周期变量注入。
       const tt = _.cloneDeep(shenpiLiucheng[ii]);
-      const userWhere = {};
+      let userWhere = {};
       const deptWhere = {};
       const index = ii + 1;
       let userList = [];
@@ -83,6 +83,9 @@ module.exports = (config) => {
           userWhere.dutyId = {
             $in: tt.zhanghao.role.dutyId,
           };
+        }
+        if (tt.zhanghao.role.userWhere) {
+          userWhere = tt.zhanghao.role.userWhere;
         }
         if (tt.zhanghao.role.deptFdn) {
           deptWhere.fdn = { $like: tt.zhanghao.role.deptFdn };

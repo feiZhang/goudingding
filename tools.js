@@ -67,18 +67,24 @@ module.exports = ({ Modal }) => ({
       if (!arg2 || arg2 == '0' || arg2 == 0) return 0;
       let t1 = 0;
       let t2 = 0;
-      try {
-        t1 = arg1.toString().split('.')[1].length;
-      } catch (e) {
-        console.log(e);
+      const s1 = arg1.toString();
+      const s2 = arg2.toString();
+      if (s1.split('.').length > 1) {
+        try {
+          t1 = s1.split('.')[1].length;
+        } catch (e) {
+          console.log(e);
+        }
       }
-      try {
-        t2 = arg2.toString().split('.')[1].length;
-      } catch (e) {
-        console.log(e);
+      if (s2.split('.').length > 1) {
+        try {
+          t2 = s2.split('.')[1].length;
+        } catch (e) {
+          console.log(e);
+        }
       }
-      const r1 = Number(arg1.toString().replace('.', ''));
-      const r2 = Number(arg2.toString().replace('.', ''));
+      const r1 = Number(s1.replace('.', ''));
+      const r2 = Number(s2.replace('.', ''));
       return Number(r2 == 0 ? 0 : (r1 / r2) * Math.pow(10, t2 - t1));
     }
     // 给Number类型增加一个div方法，调用起来更加方便。
@@ -91,19 +97,21 @@ module.exports = ({ Modal }) => ({
     // 返回值：arg1乘以arg2的精确结果
     function accMul(arg1, arg2) {
       let m = 0;
-
       const s1 = arg1.toString();
-
       const s2 = arg2.toString();
-      try {
-        m += s1.split('.')[1].length;
-      } catch (e) {
-        console.log(e);
+      if (s1.split('.').length > 1) {
+        try {
+          m += s1.split('.')[1].length;
+        } catch (e) {
+          console.log(e);
+        }
       }
-      try {
-        m += s2.split('.')[1].length;
-      } catch (e) {
-        console.log(e);
+      if (s2.split('.').length > 1) {
+        try {
+          m += s2.split('.')[1].length;
+        } catch (e) {
+          console.log(e);
+        }
       }
       return Number(((Number(s1.replace('.', '')) * Number(s2.replace('.', ''))) / Math.pow(10, m)).toFixed(m));
     }
@@ -116,17 +124,21 @@ module.exports = ({ Modal }) => ({
     // 调用：accAdd(arg1,arg2)
     // 返回值：arg1加上arg2的精确结果
     function accAdd(arg1, arg2) {
-      let r1;
-      let r2;
-      try {
-        r1 = arg1.toString().split('.')[1].length;
-      } catch (e) {
-        r1 = 0;
+      let r1 = 0;
+      let r2 = 0;
+      if (arg1.toString().split('.').length > 1) {
+        try {
+          r1 = arg1.toString().split('.')[1].length;
+        } catch (e) {
+          console.log(e);
+        }
       }
-      try {
-        r2 = arg2.toString().split('.')[1].length;
-      } catch (e) {
-        r2 = 0;
+      if (arg2.toString().split('.').length > 1) {
+        try {
+          r2 = arg2.toString().split('.')[1].length;
+        } catch (e) {
+          console.log(e);
+        }
       }
       const m = Math.max(r1, r2);
       const p = Math.pow(10, m);
@@ -139,17 +151,21 @@ module.exports = ({ Modal }) => ({
     };
     // 减法函数
     function accSub(arg1, arg2) {
-      let r1;
-      let r2;
-      try {
-        r1 = arg1.toString().split('.')[1].length;
-      } catch (e) {
-        r1 = 0;
+      let r1 = 0;
+      let r2 = 0;
+      if (arg1.toString().split('.').length > 1) {
+        try {
+          r1 = arg1.toString().split('.')[1].length;
+        } catch (e) {
+          console.log(e);
+        }
       }
-      try {
-        r2 = arg2.toString().split('.')[1].length;
-      } catch (e) {
-        r2 = 0;
+      if (arg2.toString().split('.').length > 1) {
+        try {
+          r2 = arg2.toString().split('.')[1].length;
+        } catch (e) {
+          console.log(e);
+        }
       }
       const m = Math.pow(10, Math.max(r1, r2));
       // last modify by deeka

@@ -185,5 +185,6 @@ module.exports = ({ mainModel, helper, U, importModel }) => {
     remove,
     add,
     helper,
+    Op,
   };
 };
