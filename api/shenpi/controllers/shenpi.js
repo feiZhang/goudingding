@@ -428,9 +428,9 @@ module.exports = (config) => {
                   .join(',');
                 mShenpi
                   .findOne({ where: { id: req.params.shenpiId } })
-                  .then(shenpiInfo => {
-                    if (shenpiInfo) {
-                      const smsParams = shenpiConfig[mainData.shenpiType].sendSms(shenpiInfo);
+                  .then(tShenpiInfo => {
+                    if (tShenpiInfo) {
+                      const smsParams = shenpiConfig[mainData.shenpiType].sendSms(tShenpiInfo);
                       sms
                         .sendSMS({
                           PhoneNumbers: userTels,
@@ -501,6 +501,7 @@ module.exports = (config) => {
               mShenpi.update({
                 searchString: JSON.stringify(_.omit(req.hooks.mShenpi.get(), ['fujian', 'createdAt', 'updatedAt'])),
                 shenpiTitle: gdInfo.gaishu ? gdInfo.gaishu() : '',
+                no: req.params.no,
               },
                 { where: { id: req.params.shenpiId } }
               );
@@ -515,7 +516,6 @@ module.exports = (config) => {
 
   const add = [
     async (req, res, next) => {
-      req.params.creatorCityName = (req.user.cityDept || {}).name || '';
       req.mShenpiNeirong = model(`${name}Neirong_${(req.params.shenpiType || '').toLowerCase()}`);
       if (!req.mShenpiNeirong) {
         return next(error('非法请求'));
@@ -528,9 +528,12 @@ module.exports = (config) => {
       const userCityInfo = (req.user.cityInfo || req.user.cityDept || {});
       req.params.cityName = userCityInfo.name;
       req.params.cityId = userCityInfo.renliId;
+      req.params.creatorCityName = userCityInfo.name || '';
 
-      const baseNo = req.params.baseNo ? req.params.baseNo : `${((config.config.CITY_JC || {})[req.params.cityId] || 'WZ')}${moment().format('YYYYMM')}`;
-      req.params.no = await commonLib.generateNo({ baseNo, noModel: model('no'), type: `shenpi_${req.params.shenpiType}`, });
+      if (req.params.baseNo !== false) {
+        const baseNo = req.params.baseNo ? req.params.baseNo : `${((config.config.CITY_JC || {})[req.params.cityId] || 'WZ')}${moment().format('YYYYMM')}`;
+        req.params.no = await commonLib.generateNo({ baseNo, noModel: model('no'), type: `shenpi_${req.params.shenpiType}`, });
+      }
       next();
     },
     shenpiLiucheng,
