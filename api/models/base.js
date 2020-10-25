@@ -289,8 +289,7 @@ module.exports = ({ U, config: { service, upload } }) => {
       }
     },
 
-    afterCreateFdn(model) {
-      // console.log(111,model.rawAttributes)
+    afterCreateFdn: async (model) => {
       model.fdnId = model.id;
       const qianzhui = '0000000'.substr(0, 5 - model.fdnId.toString().length);
       model.fdn = `${model.parentFdn}${qianzhui}${model.fdnId.toString()}.`;
@@ -299,11 +298,12 @@ module.exports = ({ U, config: { service, upload } }) => {
         // options.fields.push("full_name");
         // console.log(model.parentFullName,model.parentFullName==undefined,model.parentFullName==0,model.parentFullName=='');
         model.fullName =
-          model.parentFullName === undefined || model.parentFullName === 0 || model.parentFullName === ''
-            ? model.name
-            : `${model.parentFullName}-${model.name}`;
+        model.parentFullName === undefined || model.parentFullName === 0 || model.parentFullName === ''
+        ? model.name
+        : `${model.parentFullName}-${model.name}`;
       }
       const changed = model.changed();
+      // console.log(111, model.get(), changed);
       if (changed) {
         // 必须执行fn，否则不更新数据，直接install结束了。
         return model.save({ fields: changed });
