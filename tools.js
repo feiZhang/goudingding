@@ -58,7 +58,30 @@ module.exports = ({ Modal }) => ({
       // return (this + 3e-16)._toFixed(n);
     };
     // console.log((15822.11+2056.44),Number(15822.11+2056.44).toFixed(1));
-
+    // 乘法函数，用来得到精确的乘法结果
+    // 说明：javascript的乘法结果会有误差，在两个浮点数相乘的时候会比较明显。这个函数返回较为精确的乘法结果。
+    // 调用：accMul(arg1,arg2)
+    // 返回值：arg1乘以arg2的精确结果
+    function accMul(arg1, arg2) {
+      let m = 0;
+      const s1 = arg1.toString();
+      const s2 = arg2.toString();
+      if (s1.split('.').length > 1) {
+        try {
+          m += s1.split('.')[1].length;
+        } catch (e) {
+          console.log(e);
+        }
+      }
+      if (s2.split('.').length > 1) {
+        try {
+          m += s2.split('.')[1].length;
+        } catch (e) {
+          console.log(e);
+        }
+      }
+      return Number(((Number(s1.replace('.', '')) * Number(s2.replace('.', ''))) / Math.pow(10, m)).toFixed(m));
+    }
     // 除法函数，用来得到精确的除法结果
     // 说明：javascript的除法结果会有误差，在两个浮点数相除的时候会比较明显。这个函数返回较为精确的除法结果。
     // 调用：accDiv(arg1,arg2)
@@ -85,36 +108,13 @@ module.exports = ({ Modal }) => ({
       }
       const r1 = Number(s1.replace('.', ''));
       const r2 = Number(s2.replace('.', ''));
-      return Number(r2 == 0 ? 0 : (r1 / r2) * Math.pow(10, t2 - t1));
+      // console.log(arg1, arg2, r1, r2, t2, t1, (r1 / r2), Math.pow(10, t2 - t1), (r1 / r2) * Math.pow(10, t2 - t1));
+      return Number(r2 == 0 ? 0 : accMul((r1 / r2), Math.pow(10, t2 - t1)));
     }
     // 给Number类型增加一个div方法，调用起来更加方便。
     Number.prototype.div = function (arg) {
       return accDiv(this, arg);
     };
-    // 乘法函数，用来得到精确的乘法结果
-    // 说明：javascript的乘法结果会有误差，在两个浮点数相乘的时候会比较明显。这个函数返回较为精确的乘法结果。
-    // 调用：accMul(arg1,arg2)
-    // 返回值：arg1乘以arg2的精确结果
-    function accMul(arg1, arg2) {
-      let m = 0;
-      const s1 = arg1.toString();
-      const s2 = arg2.toString();
-      if (s1.split('.').length > 1) {
-        try {
-          m += s1.split('.')[1].length;
-        } catch (e) {
-          console.log(e);
-        }
-      }
-      if (s2.split('.').length > 1) {
-        try {
-          m += s2.split('.')[1].length;
-        } catch (e) {
-          console.log(e);
-        }
-      }
-      return Number(((Number(s1.replace('.', '')) * Number(s2.replace('.', ''))) / Math.pow(10, m)).toFixed(m));
-    }
     // 给Number类型增加一个mul方法，调用起来更加方便。
     Number.prototype.mul = function (arg) {
       return accMul(arg, this);
@@ -544,6 +544,13 @@ module.exports = ({ Modal }) => ({
       return ii[valueField];
     });
     return r && r.length > 0 ? names.join(',') : defaultValue != undefined ? defaultValue : id;
+  },
+  objectToArray(orgData) {
+    const rvData = [];
+    for (const key in orgData) {
+      rvData.push(orgData[key]);
+    }
+    return rvData;
   },
   /**
    * 获取cascader下属的所有值。

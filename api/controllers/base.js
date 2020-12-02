@@ -186,5 +186,9 @@ module.exports = ({ mainModel, helper, U, importModel }) => {
     add,
     helper,
     Op,
+    feifa: (req, res, next) => {
+      res.send({ error: '非法请求' });
+      next();
+    }
   };
 };
