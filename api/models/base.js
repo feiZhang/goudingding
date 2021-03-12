@@ -33,19 +33,19 @@ module.exports = ({ U, config: { service, upload } }) => {
                 tValue = !tValue || _.trim(tValue) === '' ? defaultVal : _.isString(tValue) ? JSON.parse(tValue) : tValue;
                 break;
             case 'month':
-                tValue = tValue ? moment(tValue).format('YYYY-MM') : '';
+                tValue = tValue ? moment(tValue).format('YYYY-MM') : null;
                 break;
             case 'date':
-                tValue = tValue ? moment(tValue).format('YYYY-MM-DD') : '';
+                tValue = tValue ? moment(tValue).format('YYYY-MM-DD') : null;
                 break;
             case 'date-month':
-                tValue = tValue ? moment(tValue).format('YYYY-MM') : '';
+                tValue = tValue ? moment(tValue).format('YYYY-MM') : null;
                 break;
             case 'date-year':
-                tValue = tValue ? moment(tValue).format('YYYY') : '';
+                tValue = tValue ? moment(tValue).format('YYYY') : null;
                 break;
             case 'datetime':
-                tValue = tValue ? moment(tValue).format('YYYY-MM-DD HH:mm:ss') : '';
+                tValue = tValue ? moment(tValue).format('YYYY-MM-DD HH:mm:ss') : null;
                 break;
             case 'files': {
                 const list = tValue ? JSON.parse(tValue) : [];
