@@ -7,7 +7,7 @@ const moment = require('moment');
 const tools = require('../../../tools');
 const commonLib = tools({});
 
-module.exports = (config) => {
+module.exports = config => {
     const {
         shenpiConfig,
         U: { rest, error, model, sms },
@@ -36,12 +36,12 @@ module.exports = (config) => {
         let nextToUsers = JSON.stringify([]);
         let nextSelectUser = 0;
         const shenpiLiucheng = [];
-        shenpiConfig[req.params.shenpiType].liucheng.forEach((level) => {
-            level.liucheng.forEach((one) => {
+        shenpiConfig[req.params.shenpiType].liucheng.forEach(level => {
+            level.liucheng.forEach(one => {
                 shenpiLiucheng.push({ ...one, cengji: one.cengji || level.cengji });
             });
         });
-        req.params.neirongType = shenpiConfig[req.params.shenpiType].neirongType || '单条内容';
+        req.params.neirongType = shenpiConfig[req.params.shenpiType].neirongType || '';
         // console.log(JSON.stringify(shenpiConfig),allUserIds, 'shenpiLiucheng');
         // 为了方便生成nextToUser倒序来
         let allUserNames = [];
@@ -74,7 +74,7 @@ module.exports = (config) => {
                 }
                 if (Array.isArray(tt.zhanghao.role.id) && tt.zhanghao.role.id.length > 0) {
                     userWhere.roleId = {
-                        $or: tt.zhanghao.role.id.map((ttt) => ({ $like: `%,${ttt},%` })),
+                        $or: tt.zhanghao.role.id.map(ttt => ({ $like: `%,${ttt},%` })),
                     };
                 }
                 // 指定同一角色的某个人。
@@ -111,7 +111,7 @@ module.exports = (config) => {
                     // console.log(userList.length);
                 }
                 if (!Array.isArray(tt.zhanghao.role.id)) {
-                    userList.forEach((mm) => {
+                    userList.forEach(mm => {
                         toUserNames.push({
                             updatedAt: null,
                             index,
@@ -128,10 +128,10 @@ module.exports = (config) => {
                     // 但是审批意见要填在对应的角色中。
                     // 上面的UserList只是用户列表，如果一个用户的多个角色参与，就需要生成多条，
                     // eslint-disable-next-line no-loop-func
-                    tt.zhanghao.role.id.forEach((roleId) => {
-                        const roleUserList = userList.filter((one) => one.roleId.indexOf(`,${roleId},`) >= 0);
+                    tt.zhanghao.role.id.forEach(roleId => {
+                        const roleUserList = userList.filter(one => one.roleId.indexOf(`,${roleId},`) >= 0);
                         if (shenpiConfig[req.params.shenpiType].readOnly.indexOf(roleId) < 0) {
-                            roleUserList.forEach((mm) => {
+                            roleUserList.forEach(mm => {
                                 const haveUser = _.find(toUserNames, { userId: mm.id });
                                 if (!haveUser)
                                     toUserNames.push({
@@ -148,8 +148,8 @@ module.exports = (config) => {
                     });
                 }
             }
-            const toUserIds = toUserNames.map((mm) => mm.userId);
-            allUserIds = userList.map((mm) => mm.id).concat(allUserIds);
+            const toUserIds = toUserNames.map(mm => mm.userId);
+            allUserIds = userList.map(mm => mm.id).concat(allUserIds);
             allUserNames = toUserNames.concat(allUserNames);
             if (ii === 0) {
                 req.params.currentUserIds = `,${toUserIds.join(',')},`;
@@ -187,23 +187,23 @@ module.exports = (config) => {
             nextSelectUser = tt.selectUser || 0;
         }
         req.params.allUserIds = `,${allUserIds.join(',')},`;
-        console.log(buzhous);
         // 用户生成步骤和明细的数组。
         req.buzhous = buzhous;
-        // console.log(req.buzhous);
+        console.log('shenpiBuzhouNeirong', req.buzhous);
         const formatMingxi = shenpiConfig[req.params.shenpiType].formatMingxi;
         req.toUserNames = formatMingxi ? formatMingxi(allUserNames) : allUserNames;
         next();
     };
     const shenpiLiuchengSave = async (req, res, next) => {
-        if (req.hooks.mShenpi && req.hooks.neirong) {
+        if (req.isAdd) {
             // 新增时候生成的审批步骤
-            const buzhous = req.buzhous.map((rr) => {
+            const buzhous = req.buzhous.map(rr => {
                 rr.shenpiId = req.params.shenpiId;
                 return rr;
             });
             await mShenpiBuzhou.bulkCreate(buzhous);
-            const toUsers = req.toUserNames.map((rr) => ({ ...rr, shenpiId: req.hooks.mShenpi.id }));
+            const toUsers = req.toUserNames.map(rr => ({ ...rr, shenpiId: req.hooks.mShenpi.id }));
+            console.log('shenpiMingxiNeirong', toUsers);
             await mShenpiMingxi.bulkCreate(toUsers);
             res.send(req.hooks.neirong);
         } else {
@@ -276,7 +276,7 @@ module.exports = (config) => {
                 const tagsIds = await model('tagsData').findAll({
                     where: { tagsId: { $in: req.params.tagsIds.split(',') } },
                 });
-                const ids = tagsIds.map((tt) => tt.dataId);
+                const ids = tagsIds.map(tt => tt.dataId);
                 if (ids.length > 0) {
                     if (req.params.notTagsIds) {
                         req.params['ids!'] = ids.join(',');
@@ -289,19 +289,19 @@ module.exports = (config) => {
             tList(req, res, next);
         },
         async (req, res, next) => {
-            const workIds = req.hooks.list_data.map((tt) => tt.id);
+            const workIds = req.hooks.list_data.map(tt => tt.id);
             const buzhous = req.params.haveBuzhou ? await mShenpiBuzhou.findAll({ where: { shenpiId: { $in: workIds } }, order: [['id', 'desc']] }) : [];
             const neirongs = req.params.haveNeirong
-                ? (await model(`${name}Neirong_${(req.params.shenpiType || '').toLowerCase()}`).findAll({ where: { shenpiId: { $in: workIds } } })).map((one) =>
+                ? (await model(`${name}Neirong_${(req.params.shenpiType || '').toLowerCase()}`).findAll({ where: { shenpiId: { $in: workIds } } })).map(one =>
                       one.get()
                   )
                 : [];
             // console.log(_.find(neirongs, { shenpiId: 1 }), buzhous);
             res.send({
-                data: req.hooks.list_data.map((tt) => {
+                data: req.hooks.list_data.map(tt => {
                     const ee = tt.get();
                     ee.tagsData = ee.tagsData || ee.innerTagsData;
-                    ee.buzhous = (buzhous || []).filter((one) => one.shenpiId === tt.id);
+                    ee.buzhous = (buzhous || []).filter(one => one.shenpiId === tt.id);
                     return { ...(_.find(neirongs, { shenpiId: tt.id }) || {}), ...ee };
                 }),
                 count: res.header('X-Content-Record-Total') || 0,
@@ -370,7 +370,7 @@ module.exports = (config) => {
                             where: { shenpiId: req.params.shenpiId, index: currentStep.index, isDelete: 0 },
                         });
                         let gotoNext = true;
-                        currentStep.toUserNames.map((one) => {
+                        currentStep.toUserNames.map(one => {
                             // 一个人会有多个角色，前端要传递参数，此次审批的是哪个角色
                             // console.log(one.get(), req.user.id, req.params.roleId, currentStep.shenpiType);
                             if ((one.userId === req.user.id && one.roleId === req.params.roleId) || currentStep.shenpiType === '单批') {
@@ -400,13 +400,13 @@ module.exports = (config) => {
                                 mainData.zhuangtai = '办理中';
                                 // 如果下一步是多人，前端可以选择下一步处理人。这是选定的下一步处理人
                                 if (Array.isArray(req.params.nextUserIds)) {
-                                    const tNextUserIds = req.params.nextUserIds.map((one) => one.userId.toString());
+                                    const tNextUserIds = req.params.nextUserIds.map(one => one.userId.toString());
                                     mainData.allUserIds = `,${getAllUserIds({
                                         curV: mainData.allUserIds.split(','),
                                         oldV: xiayige.toUserIds.split(','),
                                         newV: tNextUserIds,
                                     })
-                                        .filter((one) => one !== '')
+                                        .filter(one => one !== '')
                                         .join(',')},`;
                                     xiayige.toUserIds = `,${tNextUserIds.join(',')},`;
                                     await mShenpiMingxi.update({ isDelete: 1 }, { where: { index: xiayige.index, userId: { $notIn: tNextUserIds } } });
@@ -441,10 +441,10 @@ module.exports = (config) => {
                 if (shenpiConfig[mainData.shenpiType].sendSms && smsUserIds.length > 0) {
                     model(userModelName)
                         .findAll({ where: { id: { $in: smsUserIds } } })
-                        .then((users) => {
+                        .then(users => {
                             if (users.length > 0) {
-                                const userTels = users.map((one) => one.telno).join(',');
-                                mShenpi.findOne({ where: { id: req.params.shenpiId } }).then((tShenpiInfo) => {
+                                const userTels = users.map(one => one.telno).join(',');
+                                mShenpi.findOne({ where: { id: req.params.shenpiId } }).then(tShenpiInfo => {
                                     if (tShenpiInfo) {
                                         const smsParams = shenpiConfig[mainData.shenpiType].sendSms(tShenpiInfo);
                                         sms.sendSMS({
@@ -454,9 +454,9 @@ module.exports = (config) => {
                                             TemplateParam: '',
                                             ...smsParams,
                                         }).then(
-                                            (results) => {
+                                            results => {
                                                 const { Code } = results;
-                                                const smsInfo = users.map((one) => ({
+                                                const smsInfo = users.map(one => ({
                                                     userId: one.id,
                                                     deptId: one.deptId,
                                                     renliId: one.renliId,
@@ -472,8 +472,8 @@ module.exports = (config) => {
                                                     console.log(results, 'DingdanSendSMS-success');
                                                 }
                                             },
-                                            (err) => {
-                                                const smsInfo = users.map((one) => ({
+                                            err => {
+                                                const smsInfo = users.map(one => ({
                                                     userId: one.id,
                                                     deptId: one.deptId,
                                                     renliId: one.renliId,
@@ -506,7 +506,7 @@ module.exports = (config) => {
                 }
                 await shenpiLiucheng(req, res, () => {});
                 await shenpiLiuchengSave(req, res, () => {});
-                req.mShenpiNeirong.findById(req.params.id).then((gdInfo) => {
+                req.mShenpiNeirong.findById(req.params.id).then(gdInfo => {
                     if (gdInfo) {
                         req.hooks.neirong = gdInfo;
                         const aa = helper.rest.modify(req.mShenpiNeirong, 'neirong');
@@ -563,31 +563,32 @@ module.exports = (config) => {
             req.res_no_send = true;
             req.params.zhuangtai = '未提交';
             // console.log(req.params, 333);
+            req.isAdd = true;
             const aa = helper.rest.add(mShenpi, null, 'mShenpi');
-            aa(req, res, (err1) => {
+            aa(req, res, async err1 => {
                 if (err1) {
                     next(err1);
                     return;
                 }
                 req.params.shenpiId = req.hooks.mShenpi.id;
-                if (req.hooks.mShenpi.neirongType === '多条内容') {
-                    req.mShenpiNeirong.update({ shenpiId: req.params.shenpiId }, { where: { creatorId: req.user.id, shenpiId: 0 } });
+                if (req.hooks.mShenpi.neirongType != '' && req.hooks.mShenpi.neirongType != '单条内容') {
+                    const duotiaoNeirongM = model(`${name}Neirong_${(req.params.shenpiType || '').toLowerCase()}_${req.hooks.mShenpi.neirongType}`);
+                    await duotiaoNeirongM.update({ shenpiId: req.params.shenpiId }, { where: { creatorId: req.user.id, shenpiId: 0 } });
                     next();
-                } else {
-                    // 单内容审批
-                    const bb = helper.rest.add(req.mShenpiNeirong, null, 'neirong');
-                    bb(req, res, (err) => {
-                        if (err) {
-                            next(err);
-                            return;
-                        }
-                        req.hooks.mShenpi.update({
-                            searchString: JSON.stringify(_.omit(req.hooks.neirong.get(), ['fujian', 'createdAt', 'updatedAt'])),
-                            shenpiTitle: req.hooks.neirong.gaishu ? req.hooks.neirong.gaishu() : '',
-                        });
-                        next();
-                    });
                 }
+                // 单内容审批
+                const bb = helper.rest.add(req.mShenpiNeirong, null, 'neirong');
+                bb(req, res, async err => {
+                    if (err) {
+                        next(err);
+                        return;
+                    }
+                    await req.hooks.mShenpi.update({
+                        searchString: JSON.stringify(_.omit(req.hooks.neirong.get(), ['fujian', 'createdAt', 'updatedAt'])),
+                        shenpiTitle: req.hooks.neirong.gaishu ? req.hooks.neirong.gaishu() : '',
+                    });
+                    next();
+                });
             });
         },
         shenpiLiuchengSave,
@@ -604,27 +605,26 @@ module.exports = (config) => {
             }
 
             req.params.shenpiType = req.hooks.modelName.shenpiType;
-            if (!req.params.shenpiType || !model(`${name}Neirong_${(req.params.shenpiType || '').toLowerCase()}`)) {
+            req.mShenpiNeirong = model(`${name}Neirong_${req.params.shenpiType.toLowerCase()}`);
+            if (!req.params.shenpiType || !req.mShenpiNeirong) {
                 return next(error('非法请求'));
             }
-            req.mShenpiNeirong = model(`${name}Neirong_${req.params.shenpiType.toLowerCase()}`);
             return next();
         },
         async (req, res, next) => {
             const item = req.hooks.modelName.get();
             // 有可能是多数据,多条数据编辑时用此不能实时获取。 await req.mShenpiNeirong.findAll({ where: { shenpiId: item.id } })
-            const neirongList =
-                item.neirongType === '多条内容'
-                    ? await req.mShenpiNeirong.findAll({ where: { shenpiId: item.id } })
-                    : await req.mShenpiNeirong.findOne({ where: { shenpiId: item.id } });
-            mShenpiBuzhou.findAll({ where: { shenpiId: item.id }, order: [['index', 'asc']] }).then((results) => {
-                mShenpiMingxi.findAll({ where: { shenpiId: item.id, isDelete: 0 } }).then((toUserNames) => {
-                    item.historyList = results.map((rr) => ({ ...rr.get(), toUserNames: toUserNames.filter((one) => one.index === rr.index) }));
-                    if (item.neirongType === '多条内容') {
-                        res.send(Object.assign({}, { neirongList }, item, { id: item.id }));
-                    } else {
-                        res.send(Object.assign({}, item, neirongList.get()));
-                    }
+            let neirongList = [];
+            if (item.neirongType != '' && item.neirongType != '单条内容') {
+                neirongList = await model(`${name}Neirong_${req.params.shenpiType.toLowerCase()}_${item.neirongType}`).findAll({
+                    where: { shenpiId: item.id },
+                });
+            }
+            const neirongXinxi = await req.mShenpiNeirong.findOne({ where: { shenpiId: item.id } });
+            mShenpiBuzhou.findAll({ where: { shenpiId: item.id }, order: [['index', 'asc']] }).then(results => {
+                mShenpiMingxi.findAll({ where: { shenpiId: item.id, isDelete: 0 } }).then(toUserNames => {
+                    item.historyList = results.map(rr => ({ ...rr.get(), toUserNames: toUserNames.filter(one => one.index === rr.index) }));
+                    res.send(Object.assign({}, item, neirongXinxi.get(), { neirongList }));
                     next();
                 });
             });
@@ -640,6 +640,10 @@ module.exports = (config) => {
             req.mShenpiNeirong.destroy({ where: { shenpiId: req.params.id } });
             mShenpiMingxi.destroy({ where: { shenpiId: req.params.id } });
             mShenpiBuzhou.destroy({ where: { shenpiId: req.params.id } });
+            if (item.neirongType && item.neirongType != '') {
+                const shenpiMingxiModel = model(`${name}Neirong_${item.shenpiType.toLowerCase()}_${item.neirongType}`);
+                shenpiMingxiModel.destroy({ where: { shenpiId: req.params.id } });
+            }
             next();
         },
         helper.rest.remove.hook('modelName').exec(),

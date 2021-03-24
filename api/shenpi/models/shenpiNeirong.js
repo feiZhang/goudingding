@@ -59,10 +59,7 @@ module.exports = ({ baseModel }) => {
             uploadFields: ['fujian'],
         }),
         ext: Object.assign({}, baseExtAttr, {
-            sort: {
-                default: 'createdAt',
-                defaultDirection: 'desc',
-            },
+            sort: { default: 'id', defaultDirection: 'asc' },
             // 必须有，否则会将发送的数据全部过滤掉
             writableCols: false,
         }),

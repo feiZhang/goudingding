@@ -35,7 +35,8 @@ module.exports = ({ baseModel }) => {
                 comment: '内容类型，对应到内容表名字',
             },
             neirongType: {
-                type: Sequelize.ENUM('单条内容', '多条内容'),
+                // type: Sequelize.ENUM('单条内容', '多条内容'),
+                type: Sequelize.STRING(60),
                 allowNull: true,
                 defaultValue: null,
                 comment: '类容类型，对应到内容表表示多条数据还是1条数据',
