@@ -32,15 +32,15 @@ module.exports = ({ baseModel }) => {
                 defaultValue: '',
                 comment: '备注',
             },
-            fujian: {
-                type: Sequelize.TEXT,
-                allowNull: true,
-                defaultValue: null,
-                comment: '附件',
-                get() {
-                    return formatDbField(this, 'fujian', 'files');
-                },
-            },
+            // fujian: {
+            //     type: Sequelize.TEXT,
+            //     allowNull: true,
+            //     defaultValue: null,
+            //     comment: '附件',
+            //     get() {
+            //         return formatDbField(this, 'fujian', 'files');
+            //     },
+            // },
         }),
         attr: Object.assign({}, baseAttr, {
             comment: '详细内容',
@@ -56,7 +56,7 @@ module.exports = ({ baseModel }) => {
                 gaishu: () => this.title,
             },
             classMethods: {},
-            uploadFields: ['fujian'],
+            // uploadFields: ['fujian'],
         }),
         ext: Object.assign({}, baseExtAttr, {
             sort: { default: 'id', defaultDirection: 'asc' },

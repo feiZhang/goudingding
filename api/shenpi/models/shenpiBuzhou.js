@@ -56,6 +56,12 @@ module.exports = ({ baseModel }) => {
                 defaultValue: 0,
                 comment: '序号',
             },
+            tongbuShenpi: {
+                type: Sequelize.INTEGER.UNSIGNED,
+                allowNull: false,
+                defaultValue: 0,
+                comment: '多个步骤一同审批，拥有相同的tongbuShenpi进行同步审批',
+            },
             shenpiId: {
                 type: Sequelize.INTEGER.UNSIGNED,
                 allowNull: false,

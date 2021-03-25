@@ -18,7 +18,7 @@ module.exports = config => {
     const Op = Sequelize.Op;
     const { name = 'shenpi', userModelName = 'user', deptModelName = 'dept' } = shenpiConfig;
     // console.log(name, model, shenpiConfig);
-    // if (!name) return {};
+    if (!name) return {};
     const mShenpi = model(name);
     const mShenpiMingxi = model(`${name}Mingxi`);
     const mShenpiBuzhou = model(`${name}Buzhou`);
@@ -142,6 +142,7 @@ module.exports = config => {
                                         name: mm.name,
                                         color: 'red',
                                         roleId,
+                                        tongbuShenpi: tt.tongbuShenpi || 0,
                                     });
                             });
                         }
@@ -174,6 +175,7 @@ module.exports = config => {
                         zhuangtai: '经办',
                         shenpiType: tt.shenpiType || '单批',
                         index,
+                        tongbuShenpi: tt.tongbuShenpi || 0,
                         toUserIds: `,${toUserIds.join(',')},`,
                         initToUserIds: `,${toUserIds.join(',')},`,
                         // toUserNames: JSON.stringify(toUserNames),
@@ -318,7 +320,7 @@ module.exports = config => {
                     return next(error('非法请求!'));
                 }
                 if ((mainData.currentUserIds || '').indexOf(`,${req.user.id},`) < 0) {
-                    next(U.error('此审批还没到您的处理步骤，或您已处理!'));
+                    next(error('此审批还没到您的处理步骤，或您已处理!'));
                     return;
                 }
                 const isMyMingxi = await mShenpiMingxi.findOne({
@@ -329,10 +331,10 @@ module.exports = config => {
                 } else if (isMyMingxi.color !== 'red') {
                     next(error('此步骤您已处理，请刷新查看!'));
                 }
-                const isMyBuzhou = await mShenpiBuzhou.findOne({
+                const currentStep = await mShenpiBuzhou.findOne({
                     where: { id: req.params.id, zhuangtai: '待办', toUserIds: { $like: `%,${req.user.id},%` } },
                 });
-                if (!isMyBuzhou) {
+                if (!currentStep) {
                     next(error('请求的数据不存在或您没权限处理或还没到您处理步骤或您已处理!'));
                     return;
                 }
@@ -365,61 +367,72 @@ module.exports = config => {
                         break;
                     }
                     case 'tongyi': {
-                        const currentStep = await mShenpiBuzhou.findById(req.params.id);
                         currentStep.toUserNames = await mShenpiMingxi.findAll({
-                            where: { shenpiId: req.params.shenpiId, index: currentStep.index, isDelete: 0 },
+                            where:
+                                currentStep.tongbuShenpi > 0
+                                    ? { shenpiId: req.params.shenpiId, tongbuShenpi: currentStep.tongbuShenpi, isDelete: 0 }
+                                    : { shenpiId: req.params.shenpiId, index: currentStep.index, isDelete: 0 },
                         });
                         let gotoNext = true;
-                        currentStep.toUserNames.map(one => {
+                        currentStep.toUserNames.forEach(one => {
                             // 一个人会有多个角色，前端要传递参数，此次审批的是哪个角色
                             // console.log(one.get(), req.user.id, req.params.roleId, currentStep.shenpiType);
-                            if ((one.userId === req.user.id && one.roleId === req.params.roleId) || currentStep.shenpiType === '单批') {
-                                if (one.userId === req.user.id && one.roleId === req.params.roleId) {
-                                    one.banliyijian = req.params.banliyijian;
-                                    one.color = 'black';
-                                    one.updatedTime = moment().format('YYYY-MM-DD HH:mm:ss');
-                                } else {
-                                    one.color = 'green';
-                                }
+                            const isMyShenpi = one.userId === req.user.id && one.roleId === req.params.roleId && one.index === req.params.index;
+                            if (isMyShenpi) {
+                                one.banliyijian = req.params.banliyijian;
+                                one.color = 'black';
+                                one.updatedTime = moment().format('YYYY-MM-DD HH:mm:ss');
+                                one.save();
+                            } else if (currentStep.shenpiType === '单批' && one.index === currentStep.index) {
+                                one.color = 'green';
                                 one.save();
                             }
+
                             if (one.color === 'red') {
                                 gotoNext = false;
                             }
-                            return one;
                         });
                         // console.log(JSON.stringify(currentStep.toUserNames), gotoNext, 11);
                         // 减少当前处理人
                         if (gotoNext) {
-                            const xiayige = await mShenpiBuzhou.findOne({
-                                where: { shenpiId: req.params.shenpiId, index: { $gt: currentStep.index } },
+                            // 支持下一个是多个部门一块审批
+                            const xiayiges2 = await mShenpiBuzhou.findAll({
+                                where: { shenpiId: req.params.shenpiId, zhuangtai: '经办', index: { $gt: currentStep.index } },
                                 order: [['index', 'asc']],
                             });
-                            if (xiayige) {
-                                xiayige.zhuangtai = '待办';
-                                mainData.zhuangtai = '办理中';
-                                // 如果下一步是多人，前端可以选择下一步处理人。这是选定的下一步处理人
-                                if (Array.isArray(req.params.nextUserIds)) {
-                                    const tNextUserIds = req.params.nextUserIds.map(one => one.userId.toString());
-                                    mainData.allUserIds = `,${getAllUserIds({
-                                        curV: mainData.allUserIds.split(','),
-                                        oldV: xiayige.toUserIds.split(','),
-                                        newV: tNextUserIds,
-                                    })
-                                        .filter(one => one !== '')
-                                        .join(',')},`;
-                                    xiayige.toUserIds = `,${tNextUserIds.join(',')},`;
-                                    await mShenpiMingxi.update({ isDelete: 1 }, { where: { index: xiayige.index, userId: { $notIn: tNextUserIds } } });
+                            if (xiayiges2.length > 0) {
+                                mainData.currentUserIds = [];
+                                const firstXiayige = xiayiges2[0];
+                                const xiayiges =
+                                    firstXiayige.tongbuShenpi > 0 ? xiayiges2.filter(one => one.tongbuShenpi === firstXiayige.tongbuShenpi) : [firstXiayige];
+                                for (const xiayige of xiayiges) {
+                                    xiayige.zhuangtai = '待办';
+                                    mainData.zhuangtai = '办理中';
+                                    // 如果下一步是多人，前端可以选择下一步处理人。这是选定的下一步处理人
+                                    if (Array.isArray(req.params.nextUserIds)) {
+                                        const oldV = xiayige.toUserIds.split(',');
+                                        const tNextUserIds = _.intersection(oldV, req.params.nextUserIds.map(one => one.userId.toString()));
+                                        mainData.allUserIds = `,${getAllUserIds({
+                                            curV: mainData.allUserIds.split(','),
+                                            oldV,
+                                            newV: tNextUserIds,
+                                        })
+                                            .filter(one => one !== '')
+                                            .join(',')},`;
+                                        xiayige.toUserIds = `,${tNextUserIds.join(',')},`;
+                                        await mShenpiMingxi.update({ isDelete: 1 }, { where: { index: xiayige.index, userId: { $notIn: tNextUserIds } } });
+                                    }
+                                    // 如果传递了下一步的人员，上面已经格式化过了。
+                                    // 这个字段作废掉
+                                    // mainData.currentUserNames = Array.isArray(xiayige.toUserNames) ? JSON.stringify(xiayige.toUserNames) : xiayige.toUserNames;
+                                    mainData.currentUserIds = mainData.currentUserIds.concat(xiayige.toUserIds.split(','));
+                                    await xiayige.save();
+                                    smsUserIds = smsUserIds.concat(xiayige.toUserIds.split(','));
                                 }
-                                // 如果传递了下一步的人员，上面已经格式化过了。
-                                // 这个字段作废掉
-                                // mainData.currentUserNames = Array.isArray(xiayige.toUserNames) ? JSON.stringify(xiayige.toUserNames) : xiayige.toUserNames;
-                                mainData.currentUserIds = xiayige.toUserIds;
+                                mainData.currentUserIds = `,${mainData.currentUserIds.join(',')},`;
                                 currentStep.zhuangtai = '已办';
                                 await currentStep.save();
-                                await xiayige.save();
                                 await mainData.save();
-                                smsUserIds = xiayige.toUserIds.split(',');
                             } else {
                                 mainData.currentUserIds = ',,';
                                 mainData.zhuangtai = '已结束';
@@ -509,15 +522,16 @@ module.exports = config => {
                 req.mShenpiNeirong.findById(req.params.id).then(gdInfo => {
                     if (gdInfo) {
                         req.hooks.neirong = gdInfo;
-                        const aa = helper.rest.modify(req.mShenpiNeirong, 'neirong');
                         mShenpi.update(
                             {
                                 searchString: JSON.stringify(_.omit(req.hooks.neirong.get(), ['fujian', 'createdAt', 'updatedAt'])),
                                 shenpiTitle: gdInfo.gaishu ? gdInfo.gaishu() : '',
                                 no: req.params.no,
+                                allUserIds: req.params.allUserIds,
                             },
                             { where: { id: req.params.shenpiId } }
                         );
+                        const aa = helper.rest.modify(req.mShenpiNeirong, 'neirong');
                         aa(req, res, next);
                     } else {
                         next(error('请求的数据不存在!'));
@@ -573,6 +587,7 @@ module.exports = config => {
                 req.params.shenpiId = req.hooks.mShenpi.id;
                 if (req.hooks.mShenpi.neirongType != '' && req.hooks.mShenpi.neirongType != '单条内容') {
                     const duotiaoNeirongM = model(`${name}Neirong_${(req.params.shenpiType || '').toLowerCase()}_${req.hooks.mShenpi.neirongType}`);
+                    console.log(`${name}Neirong_${(req.params.shenpiType || '').toLowerCase()}_${req.hooks.mShenpi.neirongType}`);
                     await duotiaoNeirongM.update({ shenpiId: req.params.shenpiId }, { where: { creatorId: req.user.id, shenpiId: 0 } });
                     next();
                 }
@@ -597,6 +612,7 @@ module.exports = config => {
 
     const detail = [
         helper.getter(mShenpi, 'modelName'),
+        helper.assert.exists('hooks.modelName'),
         async (req, res, next) => {
             // req.viewShenpi 是在组件之外设置的，特殊能查看数据的人权，比如admin
             if (!req.viewShenpi && req.hooks.modelName.allUserIds.indexOf(`,${req.user.id},`) < 0) {
