@@ -12,8 +12,13 @@ module.exports = ({ U, config: { service, upload } }) => {
         let tValue = model.getDataValue(fieldName);
         if (tValue === undefined) return undefined;
         switch (type) {
+            case 'xiaoshu':
+                return parseFloat(tValue);
+                break;
             case 'xiaoshishu':
-                const xiaoshis = Number(tValue).div(3600).toFixed(2);
+                const xiaoshis = Number(tValue)
+                    .div(3600)
+                    .toFixed(2);
                 return `${xiaoshis}小时`;
                 break;
             case 'miao':
@@ -49,19 +54,17 @@ module.exports = ({ U, config: { service, upload } }) => {
                 break;
             case 'files': {
                 const list = tValue ? JSON.parse(tValue) : [];
-                let key = '';
-                const keyFile = `${upload.dir}/photo.txt`;
-                if (fs.existsSync(keyFile)) {
-                    key = fs.readFileSync(keyFile);
-                }
-                const formatFile = (fileList) => {
+                // let key = '';
+                // const keyFile = `${upload.dir}/photo.txt`;
+                // if (fs.existsSync(keyFile)) {
+                //     key = fs.readFileSync(keyFile);
+                // }
+                const formatFile = fileList => {
                     if (!Array.isArray(fileList)) return [];
-                    return (fileList || []).map((item) => {
+                    return (fileList || []).map(item => {
                         if (item && item.uid && item.path) {
                             item.url =
-                                item && item.uid
-                                    ? `${upload.accessUrl}?notgzip=1&f=${item.path || ''}/${item.uid}&n=${item.name}&dir=${item.dir}&key=${key}`
-                                    : '';
+                                item && item.uid ? `${upload.accessUrl}?notgzip=1&f=${item.path || ''}/${item.uid}&n=${item.name}&dir=${item.dir || ''}` : '';
                         }
                         if (Array.isArray(item.children) && item.children.length > 0) {
                             item.children = formatFile(item.children);
@@ -82,7 +85,7 @@ module.exports = ({ U, config: { service, upload } }) => {
     };
 
     const delFileTo = (fileList, haveUids) => {
-        fileList.forEach((oldFile) => {
+        fileList.forEach(oldFile => {
             // console.log(uids, oldFile);
             if (oldFile.uid && oldFile.uid !== '' && (haveUids === 'all' || haveUids.indexOf(oldFile.uid) < 0)) {
                 try {
@@ -238,9 +241,9 @@ module.exports = ({ U, config: { service, upload } }) => {
                         { where: { parentId: parentId } }
                     )
                     .then(() => {
-                        model.findAll({ where: { parentId: parentId } }).then((results) => {
+                        model.findAll({ where: { parentId: parentId } }).then(results => {
                             if (results) {
-                                results.forEach((item) => {
+                                results.forEach(item => {
                                     resetFdn(item.id, item.fdn, item.fullName);
                                 });
                             }
@@ -296,7 +299,7 @@ module.exports = ({ U, config: { service, upload } }) => {
             }
         },
 
-        afterCreateFdn: async (model) => {
+        afterCreateFdn: async model => {
             model.fdnId = model.id;
             const qianzhui = '0000000'.substr(0, 5 - model.fdnId.toString().length);
             model.fdn = `${model.parentFdn}${qianzhui}${model.fdnId.toString()}.`;
@@ -336,7 +339,7 @@ module.exports = ({ U, config: { service, upload } }) => {
         deleteUploadFile(model) {
             const uploadFields = (model._modelOptions || model.$modelOptions).uploadFields;
             if (uploadFields && Array.isArray(uploadFields) && uploadFields.length > 0) {
-                uploadFields.forEach((item) => {
+                uploadFields.forEach(item => {
                     if (model[item] && model[item] !== '') {
                         const newFiles = _.isString(model[item]) ? JSON.parse(model[item]) : model[item];
                         delFileTo(newFiles, 'all');
@@ -347,10 +350,10 @@ module.exports = ({ U, config: { service, upload } }) => {
 
         saveUploadFile(model) {
             // console.log(model);
-            const mvFileTo = (fileList) => {
+            const mvFileTo = fileList => {
                 let uids = [];
                 // console.log(fileList,'ffff');
-                fileList.forEach((nF) => {
+                fileList.forEach(nF => {
                     if (nF.uid && nF.uid !== '') {
                         const fileDir = U.getDir(nF.dir);
                         const tttName = nF.uid.split('.');
@@ -384,14 +387,14 @@ module.exports = ({ U, config: { service, upload } }) => {
             if (changed) {
                 // console.log('saveUploadFile', model.changed(), uploadFields);
                 if (uploadFields && Array.isArray(uploadFields) && uploadFields.length > 0) {
-                    uploadFields.forEach((item) => {
+                    uploadFields.forEach(item => {
                         if (changed.indexOf(item) >= 0) {
                             let newFiles = [];
                             if (model[item] && model[item] !== '') {
                                 newFiles = _.isString(model[item]) ? JSON.parse(model[item]) : model[item];
                                 mvFileTo(newFiles);
                             }
-                            const uids = newFiles.map((nFile) => nFile.uid);
+                            const uids = newFiles.map(nFile => nFile.uid);
                             if (model.previous(item) && model.previous(item) !== '') {
                                 // 删除旧的,不要的文件
                                 const mvFileLists = _.isString(model.previous(item)) ? JSON.parse(model.previous(item)) : model.previous(item);
@@ -467,7 +470,7 @@ module.exports = ({ U, config: { service, upload } }) => {
                     where.isDelete = 'no';
                 }
                 let haveChange = false;
-                one.fields.forEach((field) => {
+                one.fields.forEach(field => {
                     where[field] = model[field];
                     tempCheckValue.push(model[field]);
                     if (!haveChange) haveChange = changed.indexOf(field) >= 0;
@@ -492,7 +495,7 @@ module.exports = ({ U, config: { service, upload } }) => {
             const Op = (U.rest.Sequelize || {}).Op;
             const type = { 1: '01', 2: '02' };
             const benYue = type[model.type.toString()] + moment().format('YYYYMM');
-            model.constructor.max({ where: { no: { [Op.like]: `${benYue}%` } } }).then((max) => {
+            model.constructor.max({ where: { no: { [Op.like]: `${benYue}%` } } }).then(max => {
                 if (max) model.no = Number(max) + 1;
                 else model.no = `${benYue}00001`;
                 options.fields.push('no');

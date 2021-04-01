@@ -95,7 +95,7 @@ module.exports = ({ baseModel }) => {
                 allowNull: true,
                 defaultValue: Sequelize.NOW,
                 get() {
-                    return formatDbField(this, 'createdAt', 'date');
+                    return formatDbField(this, 'createdAt', 'datetime');
                 },
             },
         }),

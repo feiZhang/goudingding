@@ -3,11 +3,11 @@ module.exports = ({ mainModel, helper, U, importModel }) => {
     const Op = U.rest.Sequelize.Op;
     const list = [
         // helper.checker.sysAdmin(),
-        helper.rest.list(mainModel, "", null, "list_data"),
+        helper.rest.list(mainModel, '', null, 'list_data'),
         (req, res, next) => {
             res.send({
                 data: req.hooks.list_data,
-                count: res.header("X-Content-Record-Total") || 0,
+                count: res.header('X-Content-Record-Total') || 0,
             });
             next();
         },
@@ -21,19 +21,13 @@ module.exports = ({ mainModel, helper, U, importModel }) => {
             if (req.params.baseFileId) {
                 req.params.importFileId = req.params.baseFileId;
             }
-            if (req.params.isError && Array.isArray(req.params.isError))
-                req.params.isError = req.params.isError.join(",");
+            if (req.params.isError && Array.isArray(req.params.isError)) req.params.isError = req.params.isError.join(',');
             else if (req.params.isError) req.params.isError = 1;
-            const tlist = helper.rest.list(
-                req.params.baseImportFileId ? importModel : mainModel,
-                "",
-                null,
-                "list_data"
-            );
+            const tlist = helper.rest.list(req.params.baseImportFileId ? importModel : mainModel, '', null, 'list_data');
             tlist(req, res, () => {
                 res.send({
                     data: req.hooks.list_data,
-                    count: res.header("X-Content-Record-Total") || 0,
+                    count: res.header('X-Content-Record-Total') || 0,
                 });
                 next();
             });
@@ -41,20 +35,20 @@ module.exports = ({ mainModel, helper, U, importModel }) => {
     ];
 
     const modify = [
-        helper.getter(mainModel, "modelName"),
-        helper.assert.exists("hooks.modelName"),
+        helper.getter(mainModel, 'modelName'),
+        helper.assert.exists('hooks.modelName'),
         [
             // helper.checker.ownSelf('id', 'modelName'),
             // helper.checker.sysAdmin(),
         ],
-        helper.rest.modify(mainModel, "modelName"),
+        helper.rest.modify(mainModel, 'modelName'),
     ];
 
     const remove = [
         // helper.checker.sysAdmin(),
-        helper.getter(mainModel, "modelName"),
-        helper.assert.exists("hooks.modelName"),
-        helper.rest.remove.hook("modelName").exec(),
+        helper.getter(mainModel, 'modelName'),
+        helper.assert.exists('hooks.modelName'),
+        helper.rest.remove.hook('modelName').exec(),
     ];
 
     const detail = [
@@ -62,7 +56,7 @@ module.exports = ({ mainModel, helper, U, importModel }) => {
             if (req.params.id) {
                 next();
             } else {
-                next(U.error("非法请求！"));
+                next(U.error('非法请求！'));
             }
         },
     ].concat(list);
@@ -82,52 +76,38 @@ module.exports = ({ mainModel, helper, U, importModel }) => {
      *        true:全部权限，不用进行部门过滤
      *        {manageLevel:最大能够查询的级别(暂无用), manageDeptIds(需要附加的查询范围)}
      **/
-    const searchDeptCheck = async ({
-        user = {},
-        searchDeptId,
-        yewuManager = [],
-        onlySearchDept = false,
-    }) => {
+    const searchDeptCheck = async ({ user = {}, searchDeptId, yewuManager = [], onlySearchDept = false }) => {
         let manageDeptIds = [];
         let manageLevel = 9;
         const isAdmin = user.isAdmin || user.isAllManager;
         // 不是超级管理员，则根据区域管理员管理范围、业务管理员管理范围，进行合并，获取此次查询的基础管理范围。
         if (!isAdmin) {
             if (user.isAreaManager) {
-                manageDeptIds = manageDeptIds.concat(
-                    user.isAreaManager.manageDeptIds
-                );
+                manageDeptIds = manageDeptIds.concat(user.isAreaManager.manageDeptIds);
                 manageLevel = user.isAreaManager.manageLevel;
             }
-            yewuManager.map((one) => {
+            yewuManager.map(one => {
                 if (user[one]) {
-                    if (user[one].manageLevel < manageLevel)
-                        manageLevel = user[one].manageLevel;
+                    if (user[one].manageLevel < manageLevel) manageLevel = user[one].manageLevel;
                     // console.log(manageDeptIds, user[one].manageDeptIds, 888);
-                    manageDeptIds = manageDeptIds.concat(
-                        user[one].manageDeptIds
-                    );
+                    manageDeptIds = manageDeptIds.concat(user[one].manageDeptIds);
                 }
             });
             if (manageDeptIds.length < 1) return false;
         }
         if (searchDeptId) {
-            if (!(isAdmin || manageDeptIds.indexOf(searchDeptId) >= 0))
-                return false;
+            if (!(isAdmin || manageDeptIds.indexOf(searchDeptId) >= 0)) return false;
 
-            const theDept = await U.model("dept").findById(searchDeptId);
-            if (
-                theDept &&
-                (isAdmin || manageDeptIds.indexOf(theDept.id) >= 0)
-            ) {
+            const theDept = await U.model('dept').findById(searchDeptId);
+            if (theDept && (isAdmin || manageDeptIds.indexOf(theDept.id) >= 0)) {
                 if (onlySearchDept) return theDept.get();
-                const depts = await U.model("dept").findAll({
+                const depts = await U.model('dept').findAll({
                     where: { fdn: { [Op.like]: `${theDept.fdn}%` } },
                 });
                 return {
                     manageLevel,
                     deptInfo: theDept.get(),
-                    manageDeptIds: depts.map((one) => one.id),
+                    manageDeptIds: depts.map(one => one.id),
                 };
             }
             return false;
@@ -139,37 +119,24 @@ module.exports = ({ mainModel, helper, U, importModel }) => {
     const deptDataFilter = (searchDepts = false) => async (req, res, next) => {
         const Sequelize = U.rest.Sequelize;
         if (req.params.searchDeptId) {
-            if (
-                req.user.isAreaManager ||
-                req.user.isAdmin ||
-                req.user.isAllManager ||
-                searchDepts
-            ) {
-                const theDept = await U.model("dept").findById(
-                    req.params.searchDeptId
-                );
+            if (req.user.isAreaManager || req.user.isAdmin || req.user.isAllManager || searchDepts) {
+                const theDept = await U.model('dept').findById(req.params.searchDeptId);
                 if (theDept) {
                     req.params.searchDeptInfo = theDept;
-                    const allDept = await U.model("dept").findAll({
+                    const allDept = await U.model('dept').findAll({
                         where: {
                             ...(req.deptWhere || {}),
                             fdn: { [Sequelize.Op.like]: `${theDept.fdn}%` },
                         },
                     });
-                    const sIds = allDept.map((one) => one.id);
+                    const sIds = allDept.map(one => one.id);
                     // console.log(searchDepts, sIds, 222);
                     if (searchDepts) {
-                        req.params.deptIds = U._.intersection(
-                            searchDepts,
-                            sIds
-                        ).join(",");
+                        req.params.deptIds = U._.intersection(searchDepts, sIds).join(',');
                     } else if (req.user.isAdmin || req.user.isAllManager) {
-                        req.params.deptIds = sIds.join(",");
+                        req.params.deptIds = sIds.join(',');
                     } else if (req.user.isAreaManager) {
-                        req.params.deptIds = U._.intersection(
-                            req.user.isAreaManager.manageDeptIds,
-                            sIds
-                        ).join(",");
+                        req.params.deptIds = U._.intersection(req.user.isAreaManager.manageDeptIds, sIds).join(',');
                     } else {
                         req.params.deptIds = 0;
                     }
@@ -178,18 +145,13 @@ module.exports = ({ mainModel, helper, U, importModel }) => {
                     req.params.deptIds = 0;
                 }
             } else {
-                req.params.deptIds =
-                    Number(req.params.searchDeptId) === Number(req.user.deptId)
-                        ? req.params.searchDeptId
-                        : "0";
+                req.params.deptIds = Number(req.params.searchDeptId) === Number(req.user.deptId) ? req.params.searchDeptId : '0';
             }
         } else if (!req.user.isAdmin && !req.user.isAllManager) {
             if (searchDepts) {
-                req.params.deptIds = searchDepts.join(",");
+                req.params.deptIds = searchDepts.join(',');
             } else if (req.user.isAreaManager) {
-                req.params.deptIds = req.user.isAreaManager.manageDeptIds.join(
-                    ","
-                );
+                req.params.deptIds = req.user.isAreaManager.manageDeptIds.join(',');
             } else {
                 req.params.deptIds = req.user.deptId;
             }
@@ -197,66 +159,50 @@ module.exports = ({ mainModel, helper, U, importModel }) => {
         next();
     };
 
-    const deptList = ({
-        haveDelete = false,
-        where = {},
-        attributes,
-        order,
-    }) => async (req, res, next) => {
-        const mDept = U.model("dept");
+    const deptList = ({ haveDelete = false, where = {}, attributes, order }) => async (req, res, next) => {
+        const mDept = U.model('dept');
         const d = await mDept.findAll({
-            attributes: attributes || [
-                "renliId",
-                "id",
-                "orderNum",
-                "name",
-                "fdnLevel",
-                "fullName",
-                "fdn",
-            ],
+            attributes: attributes || ['renliId', 'id', 'orderNum', 'name', 'fdnLevel', 'fullName', 'fdn'],
             paranoid: !haveDelete,
             where,
-            order: order || [
-                ["fdnLevel", "asc"],
-                ["orderNum", "asc"],
-            ],
+            order: order || [['fdnLevel', 'asc'], ['orderNum', 'asc']],
         });
         const cityList = {
             0: {
                 id: 0,
                 cityId: 0,
-                cityName: "其他",
+                cityName: '其他',
                 orderNum: 0,
-                name: "其他",
+                name: '其他',
             },
         };
         const wfqList = {
             0: {
                 id: 0,
                 cityId: 0,
-                cityName: "其他",
+                cityName: '其他',
                 orderNum: 0,
                 wfqId: 0,
-                wfqName: "其他",
-                name: "其他",
+                wfqName: '其他',
+                name: '其他',
             },
         };
         const wgList = {
             0: {
                 id: 0,
                 cityId: 0,
-                cityName: "其他",
+                cityName: '其他',
                 orderNum: 0,
                 wfqId: 0,
-                wfqName: "其他",
-                wgName: "其他",
+                wfqName: '其他',
+                wgName: '其他',
                 wgId: 0,
-                name: "其他",
+                name: '其他',
             },
         };
         const renliIdToId = {};
-        d.forEach((ii) => {
-            const tempFdn = ii.fdn.split(".");
+        d.forEach(ii => {
+            const tempFdn = ii.fdn.split('.');
             if (ii.fdnLevel === 2) {
                 cityList[ii.id] = {
                     id: ii.id,
@@ -294,7 +240,7 @@ module.exports = ({ mainModel, helper, U, importModel }) => {
         next();
     };
 
-    const getUserInfoForInitDb = (req) => {
+    const getUserInfoForInitDb = req => {
         return {
             creatorDeptId: req.user.dept.id,
             creatorDeptName: req.user.dept.name,
@@ -317,7 +263,7 @@ module.exports = ({ mainModel, helper, U, importModel }) => {
         Sequelize,
         Op,
         feifa: (req, res, next) => {
-            res.send({ error: "非法请求" });
+            res.send({ error: '非法请求' });
             next();
         },
         getUserInfoForInitDb,

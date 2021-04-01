@@ -98,5 +98,6 @@ module.exports = config => {
         modify,
         remove,
         add,
+        helper,
     };
 };

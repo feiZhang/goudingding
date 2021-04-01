@@ -6,15 +6,15 @@ const baseController = require('./api/controllers/base');
 const tools = require('./tools.js');
 
 module.exports = ({ config, U }) => {
-  const theBaseModel = baseModel({ config, U });
-  return {
-    tools,
-    baseModel: theBaseModel,
-    baseController: ({ mainModel, importModel }) => {
-      return baseController({ mainModel, U, helper: U.rest.helper, importModel });
-    },
-    shenpi: (shenpiConfig) => {
-      return shenpi({ baseModel: theBaseModel, U, config, shenpiConfig });
-    },
-  };
+    const theBaseModel = baseModel({ config, U });
+    return {
+        tools,
+        baseModel: theBaseModel,
+        baseController: ({ mainModel, importModel }) => {
+            return baseController({ config, mainModel, U, helper: U.rest.helper, importModel });
+        },
+        shenpi: shenpiConfig => {
+            return shenpi({ baseModel: theBaseModel, U, config, shenpiConfig });
+        },
+    };
 };

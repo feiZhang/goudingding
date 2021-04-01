@@ -130,6 +130,7 @@ module.exports = config => {
                     // eslint-disable-next-line no-loop-func
                     tt.zhanghao.role.id.forEach(roleId => {
                         const roleUserList = userList.filter(one => one.roleId.indexOf(`,${roleId},`) >= 0);
+                        // readOnly 后期被取消，永远为空，因为：readOnly对用的角色在单据创建时，将这个用户的id加到allUser中，后面给其他人添加这个角色后，这个人看不到以前的数据。
                         if (shenpiConfig[req.params.shenpiType].readOnly.indexOf(roleId) < 0) {
                             roleUserList.forEach(mm => {
                                 const haveUser = _.find(toUserNames, { userId: mm.id });
@@ -245,6 +246,13 @@ module.exports = config => {
     const list = [
         // helper.checker.sysAdmin(),
         async (req, res, next) => {
+            if (
+                !req.noViewShenpi &&
+                shenpiConfig[req.params.shenpiType].viewShenpi &&
+                _.intersection(shenpiConfig[req.params.shenpiType].viewShenpi, req.user.roleId.split(',')).length > 0
+            ) {
+                req.viewShenpi = true;
+            }
             // if (!req.params.shenpiType || !model(`${name}Neirong_${(req.params.shenpiType || '').toLowerCase()}`)) {
             //   return next(error('非法请求'));
             // }
@@ -614,13 +622,20 @@ module.exports = config => {
         helper.getter(mShenpi, 'modelName'),
         helper.assert.exists('hooks.modelName'),
         async (req, res, next) => {
+            req.params.shenpiType = req.hooks.modelName.shenpiType;
+            if (
+                !req.noViewShenpi &&
+                shenpiConfig[req.params.shenpiType].viewShenpi &&
+                _.intersection(shenpiConfig[req.params.shenpiType].viewShenpi, req.user.roleId.split(',')).length > 0
+            ) {
+                req.viewShenpi = true;
+            }
             // req.viewShenpi 是在组件之外设置的，特殊能查看数据的人权，比如admin
             if (!req.viewShenpi && req.hooks.modelName.allUserIds.indexOf(`,${req.user.id},`) < 0) {
                 next(error('请求的数据不存在或您没权限处理!'));
                 return;
             }
 
-            req.params.shenpiType = req.hooks.modelName.shenpiType;
             req.mShenpiNeirong = model(`${name}Neirong_${req.params.shenpiType.toLowerCase()}`);
             if (!req.params.shenpiType || !req.mShenpiNeirong) {
                 return next(error('非法请求'));
@@ -671,5 +686,6 @@ module.exports = config => {
         modify,
         remove,
         add,
+        helper,
     };
 };
