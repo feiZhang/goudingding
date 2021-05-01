@@ -468,13 +468,14 @@ module.exports = config => {
                                 mShenpi.findOne({ where: { id: req.params.shenpiId } }).then(tShenpiInfo => {
                                     if (tShenpiInfo) {
                                         const smsParams = shenpiConfig[mainData.shenpiType].sendSms(tShenpiInfo);
-                                        sms.sendSMS({
+                                        const sendSmsInfo = {
                                             PhoneNumbers: userTels,
                                             SignName: '河南铁通',
                                             TemplateCode: 'SMS_155856246',
                                             TemplateParam: '',
                                             ...smsParams,
-                                        }).then(
+                                        };
+                                        sms.sendSMS(sendSmsInfo).then(
                                             results => {
                                                 const { Code } = results;
                                                 const smsInfo = users.map(one => ({
@@ -482,8 +483,9 @@ module.exports = config => {
                                                     deptId: one.deptId,
                                                     renliId: one.renliId,
                                                     type: `Shenpi_${mainData.shenpiType}`,
-                                                    telno: one.telno,
-                                                    content: smsParams.TemplateParam,
+                                                    telno: sendSmsInfo.telno,
+                                                    content: sendSmsInfo.TemplateParam,
+                                                    templateCode: sendSmsInfo.TemplateCode,
                                                     zhuangtai: Code,
                                                     beizhu: JSON.stringify(results),
                                                 }));
@@ -499,8 +501,9 @@ module.exports = config => {
                                                     deptId: one.deptId,
                                                     renliId: one.renliId,
                                                     type: `Shenpi_${mainData.shenpiType}`,
-                                                    telno: one.telno,
-                                                    content: smsParams.TemplateParam,
+                                                    telno: sendSmsInfo.telno,
+                                                    content: sendSmsInfo.TemplateParam,
+                                                    templateCode: sendSmsInfo.TemplateCode,
                                                     zhuangtai: 'error',
                                                     beizhu: JSON.stringify(err),
                                                 }));
