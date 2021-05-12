@@ -267,7 +267,7 @@ module.exports = config => {
                         req.params.allUserIds_like = `%,${req.user.id},%`;
                         // req.params.currentUserIds_notLike = `%,${req.user.id},%`;
                     }
-                    if (!req.params.zhuangtais) req.params.zhuangtais = '已结束,办理中';
+                    // if (!req.params.zhuangtais) req.params.zhuangtais = '已结束,办理中';
                 } else {
                     _options.where = {
                         [Op.or]: [
